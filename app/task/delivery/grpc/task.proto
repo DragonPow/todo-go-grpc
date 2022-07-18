@@ -36,9 +36,9 @@ service TaskHandler {
         };
     };
 
-    rpc Delete(DeleteReq) returns (google.protobuf.Empty) {
+    rpc DeleteMultiple(DeleteMultipleReq) returns (google.protobuf.Empty) {
         option (google.api.http) = {
-            delete: "/tasks/{id}"
+            delete: "/tasks:delete"
         };
     }
 
@@ -50,8 +50,11 @@ service TaskHandler {
 }
 
 message ListReq {
-    int32 page_size  = 1;
-    int32 page_token = 2;
+    int32 page_size         = 1;
+    int32 page_token        = 2;
+    string name             = 3;
+    repeated string tags_id = 4;
+    Filter filter           = 5;
 }
 
 message GetReq {
@@ -66,12 +69,14 @@ message CreateReq {
 }
 
 message UpdateReq {
-    int32 id  = 1 [(validate.rules).message.required = true];
-    Task task = 2;
+    int32 id                    = 1 [(validate.rules).message.required = true];
+    Task new_task_info          = 2;
+    repeated int32 tags_added   = 3;
+    repeated int32 tags_deleted = 4 [(validate.rules).message.required = true];
 }
 
-message DeleteReq {
-    int32 id = 1;
+message DeleteMultipleReq {
+    repeated int32 tasks_id = 1;
 }
 
 message ListTask {
@@ -83,9 +88,16 @@ message Task {
     string name                            = 2;
     string description                     = 3;
     bool is_done                           = 4;
-    string creator_id                      = 5;
+    int32 creator_id                       = 5;
     repeated int32 tags                    = 6;
     google.protobuf.Timestamp created_time = 7;
-    google.protobuf.Timestamp updated_time = 8;
-    google.protobuf.Timestamp doned_time   = 9;
+    google.protobuf.Timestamp doned_time   = 8;
+}
+
+enum Filter {
+    FILTER_UNSPECIFIED = 0;
+    TIME_UPDATE_ASC    = 1;
+    TIME_UPDATE_DESC   = 2;
+    TIME_CREATE_ASC    = 3;
+    TIME_CREATE_DESC   = 4;
 }

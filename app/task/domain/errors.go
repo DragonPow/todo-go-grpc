@@ -6,4 +6,5 @@ var (
 	ErrTaskNotExists = errors.New("ErrTaskNotExists")
 	ErrTaskExists    = errors.New("ErrTaskExists")
 	ErrTagNotExists  = errors.New("ErrTagNotExists")
+	ErrUserNotExists = errors.New("ErrUserNotExists")
 )

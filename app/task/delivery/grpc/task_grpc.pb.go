@@ -27,7 +27,7 @@ type TaskHandlerClient interface {
 	Get(ctx context.Context, in *GetReq, opts ...grpc.CallOption) (*Task, error)
 	Create(ctx context.Context, in *CreateReq, opts ...grpc.CallOption) (*Task, error)
 	Update(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*Task, error)
-	Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteMultiple(ctx context.Context, in *DeleteMultipleReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAll(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -75,9 +75,9 @@ func (c *taskHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...g
 	return out, nil
 }
 
-func (c *taskHandlerClient) Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *taskHandlerClient) DeleteMultiple(ctx context.Context, in *DeleteMultipleReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/gprc.TaskHandler/Delete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/gprc.TaskHandler/DeleteMultiple", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ type TaskHandlerServer interface {
 	Get(context.Context, *GetReq) (*Task, error)
 	Create(context.Context, *CreateReq) (*Task, error)
 	Update(context.Context, *UpdateReq) (*Task, error)
-	Delete(context.Context, *DeleteReq) (*emptypb.Empty, error)
+	DeleteMultiple(context.Context, *DeleteMultipleReq) (*emptypb.Empty, error)
 	DeleteAll(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedTaskHandlerServer()
 }
@@ -122,8 +122,8 @@ func (UnimplementedTaskHandlerServer) Create(context.Context, *CreateReq) (*Task
 func (UnimplementedTaskHandlerServer) Update(context.Context, *UpdateReq) (*Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
-func (UnimplementedTaskHandlerServer) Delete(context.Context, *DeleteReq) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+func (UnimplementedTaskHandlerServer) DeleteMultiple(context.Context, *DeleteMultipleReq) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteMultiple not implemented")
 }
 func (UnimplementedTaskHandlerServer) DeleteAll(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAll not implemented")
@@ -213,20 +213,20 @@ func _TaskHandler_Update_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TaskHandler_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteReq)
+func _TaskHandler_DeleteMultiple_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMultipleReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TaskHandlerServer).Delete(ctx, in)
+		return srv.(TaskHandlerServer).DeleteMultiple(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/gprc.TaskHandler/Delete",
+		FullMethod: "/gprc.TaskHandler/DeleteMultiple",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaskHandlerServer).Delete(ctx, req.(*DeleteReq))
+		return srv.(TaskHandlerServer).DeleteMultiple(ctx, req.(*DeleteMultipleReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -273,8 +273,8 @@ var TaskHandler_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _TaskHandler_Update_Handler,
 		},
 		{
-			MethodName: "Delete",
-			Handler:    _TaskHandler_Delete_Handler,
+			MethodName: "DeleteMultiple",
+			Handler:    _TaskHandler_DeleteMultiple_Handler,
 		},
 		{
 			MethodName: "DeleteAll",

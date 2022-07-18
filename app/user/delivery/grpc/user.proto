@@ -62,8 +62,6 @@ message CreateReq {
 message UpdateReq {
     int32 id = 1 [(validate.rules).message.required = true];
     User new_user_infor = 2;
-    repeated int32 tags_added = 3;
-    repeated int32 tags_deleted = 4 [(validate.rules).message.required = true];
 }
 
 message DeleteReq {
