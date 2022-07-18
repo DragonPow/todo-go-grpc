@@ -5,7 +5,6 @@ package gprc;
 option go_package = "../grpc";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 import "validate/validate.proto";
@@ -62,7 +61,9 @@ message CreateReq {
 
 message UpdateReq {
     int32 id = 1 [(validate.rules).message.required = true];
-    map<string, google.protobuf.Any> payloads = 2;
+    User new_user_infor = 2;
+    repeated int32 tags_added = 3;
+    repeated int32 tags_deleted = 4;
 }
 
 message DeleteReq {
