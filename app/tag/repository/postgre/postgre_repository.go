@@ -49,7 +49,7 @@ func (t *tagRepository) Create(ctx context.Context, info *domain.Tag) (*domain.T
 		if pgError, ok := err.(*pgconn.PgError); ok && errors.Is(err, pgError) {
 			// Duplicate value
 			if pgError.Code == "23505" {
-				return nil, domain.ErrTagValueDuplicated
+				return nil, domain.ErrTagIsExists
 			}
 		}
 		return nil, err

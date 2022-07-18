@@ -131,7 +131,7 @@ func (serverInstance *server) Update(ctx context.Context, req *UpdateReq) (*Task
 			return nil, grpc_status.Error(codes.NotFound, err.Error())
 		}
 		if errors.Is(err, domain.ErrTaskExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
+			return nil, grpc_status.Error(codes.AlreadyExists, err.Error())
 		}
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}

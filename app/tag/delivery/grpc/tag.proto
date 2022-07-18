@@ -44,8 +44,6 @@ service TagHandler {
 }
 
 message ListReq {
-    int32 page_size  = 1 [(validate.rules).message.required = true];
-    int32 page_token = 2 [(validate.rules).message.required = true];
 }
 
 message GetReq {
@@ -53,12 +51,13 @@ message GetReq {
 }
 
 message CreateReq {
-    Tag tag = 1;
+    string value = 1;
+    string description = 2;
 }
 
 message UpdateReq {
     int32 id  = 1 [(validate.rules).message.required = true];
-    Tag tag = 2;
+    Tag new_tag_info = 2;
 }
 
 message DeleteReq {
