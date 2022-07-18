@@ -63,17 +63,24 @@ func (u *userRepository) Create(ctx context.Context, info *domain.User) (*domain
 		return nil, err
 	}
 
-	// TODO: implement info here
 	return info, nil
 }
 
 func (u *userRepository) Update(ctx context.Context, id int32, new_info *domain.User) (*domain.User, error) {
-	if err := u.Conn.Db.First(&domain.User{ID: id}).Updates(&new_info).Error; err != nil {
+	update := map[string]any{
+		"name":     new_info.Name,
+		"username": new_info.Username,
+		"password": new_info.Password,
+	}
+
+	user := &domain.User{ID: id}
+
+	if err := u.Conn.Db.First(user).Updates(&update).Error; err != nil {
 		return nil, err
 	}
 
 	// TODO: implement new_info here
-	return nil, nil
+	return user, nil
 }
 
 func (u *userRepository) Delete(ctx context.Context, id int32) error {

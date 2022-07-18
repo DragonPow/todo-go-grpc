@@ -24,7 +24,7 @@ import (
 func main() {
 	server := grpc.NewServer()
 
-	listener, err := net.Listen("tcp", "localhost:8080")
+	listener, err := net.Listen("tcp", ":8080")
 
 	if err != nil {
 		log.Fatalf("Listen TCP error:\n%v", err)
