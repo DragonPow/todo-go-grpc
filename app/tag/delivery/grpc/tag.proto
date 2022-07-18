@@ -44,15 +44,17 @@ service TagHandler {
 }
 
 message ListReq {
-    int32 page_size  = 1;
-    int32 page_token = 2;
+    int32 page_size  = 1 [(validate.rules).message.required = true];
+    int32 page_token = 2 [(validate.rules).message.required = true];
 }
 
 message GetReq {
     int32 id = 1;
 }
 
-message CreateReq {}
+message CreateReq {
+    Tag tag = 1;
+}
 
 message UpdateReq {
     int32 id  = 1 [(validate.rules).message.required = true];
@@ -62,6 +64,7 @@ message UpdateReq {
 message DeleteReq {
     int32 id = 1;
 }
+
 
 message ListTag {
     repeated Tag tags = 1;
