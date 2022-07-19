@@ -1,4 +1,4 @@
-package responseservice
+package response_handler
 
 import (
 	"google.golang.org/grpc/codes"

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	response_service "todo-go-grpc/app/responseservice"
+	response_service "todo-go-grpc/app/response_handler"
 	api "todo-go-grpc/app/user/api"
 	domain "todo-go-grpc/app/user/domain"
 	repository "todo-go-grpc/app/user/repository"
