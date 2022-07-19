@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.21.2
-// source: app/tag/delivery/grpc/tag.proto
+// source: app/tag/api/tag.proto
 
-package grpc
+package api
 
 import (
 	context "context"
@@ -40,7 +40,7 @@ func NewTagHandlerClient(cc grpc.ClientConnInterface) TagHandlerClient {
 
 func (c *tagHandlerClient) List(ctx context.Context, in *ListReq, opts ...grpc.CallOption) (*ListTag, error) {
 	out := new(ListTag)
-	err := c.cc.Invoke(ctx, "/grpc.tag.TagHandler/List", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.tag.TagHandler/List", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (c *tagHandlerClient) List(ctx context.Context, in *ListReq, opts ...grpc.C
 
 func (c *tagHandlerClient) Get(ctx context.Context, in *GetReq, opts ...grpc.CallOption) (*Tag, error) {
 	out := new(Tag)
-	err := c.cc.Invoke(ctx, "/grpc.tag.TagHandler/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.tag.TagHandler/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (c *tagHandlerClient) Get(ctx context.Context, in *GetReq, opts ...grpc.Cal
 
 func (c *tagHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...grpc.CallOption) (*Tag, error) {
 	out := new(Tag)
-	err := c.cc.Invoke(ctx, "/grpc.tag.TagHandler/Create", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.tag.TagHandler/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (c *tagHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...gr
 
 func (c *tagHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*Tag, error) {
 	out := new(Tag)
-	err := c.cc.Invoke(ctx, "/grpc.tag.TagHandler/Update", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.tag.TagHandler/Update", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (c *tagHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...gr
 
 func (c *tagHandlerClient) Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/grpc.tag.TagHandler/Delete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.tag.TagHandler/Delete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func _TagHandler_List_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.tag.TagHandler/List",
+		FullMethod: "/api.tag.TagHandler/List",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TagHandlerServer).List(ctx, req.(*ListReq))
@@ -155,7 +155,7 @@ func _TagHandler_Get_Handler(srv interface{}, ctx context.Context, dec func(inte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.tag.TagHandler/Get",
+		FullMethod: "/api.tag.TagHandler/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TagHandlerServer).Get(ctx, req.(*GetReq))
@@ -173,7 +173,7 @@ func _TagHandler_Create_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.tag.TagHandler/Create",
+		FullMethod: "/api.tag.TagHandler/Create",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TagHandlerServer).Create(ctx, req.(*CreateReq))
@@ -191,7 +191,7 @@ func _TagHandler_Update_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.tag.TagHandler/Update",
+		FullMethod: "/api.tag.TagHandler/Update",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TagHandlerServer).Update(ctx, req.(*UpdateReq))
@@ -209,7 +209,7 @@ func _TagHandler_Delete_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.tag.TagHandler/Delete",
+		FullMethod: "/api.tag.TagHandler/Delete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TagHandlerServer).Delete(ctx, req.(*DeleteReq))
@@ -221,7 +221,7 @@ func _TagHandler_Delete_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TagHandler_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "grpc.tag.TagHandler",
+	ServiceName: "api.tag.TagHandler",
 	HandlerType: (*TagHandlerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -246,5 +246,5 @@ var TagHandler_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/tag/delivery/grpc/tag.proto",
+	Metadata: "app/tag/api/tag.proto",
 }

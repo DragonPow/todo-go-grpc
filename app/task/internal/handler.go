@@ -1,12 +1,13 @@
-package grpc
+package internal
 
 import (
 	"context"
 	"errors"
 	"log"
-	tagDomain "todo-go-grpc/app/tag/domain"
-	"todo-go-grpc/app/task/domain"
-	_usecase "todo-go-grpc/app/task/usecase"
+
+	api "todo-go-grpc/app/task/api"
+	domain "todo-go-grpc/app/task/domain"
+	repository "todo-go-grpc/app/task/repository"
 
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -16,20 +17,20 @@ import (
 )
 
 type server struct {
-	usecase _usecase.TaskUsecase
-	UnimplementedTaskHandlerServer
+	repo repository.TaskRepository
+	api.UnimplementedTaskHandlerServer
 }
 
-func RegisterGrpc(gserver *grpc.Server, tagUsecase _usecase.TaskUsecase) {
+func RegisterGrpc(gserver *grpc.Server, repo repository.TaskRepository) {
 	taskServer := &server{
-		usecase: tagUsecase,
+		repo: repo,
 	}
 
-	RegisterTaskHandlerServer(gserver, taskServer)
+	api.RegisterTaskHandlerServer(gserver, taskServer)
 }
 
-func transferDomainToProto(in domain.Task) *Task {
-	return &Task{
+func transferDomainToProto(in domain.Task) *api.Task {
+	return &api.Task{
 		Id:          in.ID,
 		Name:        in.Name,
 		Description: in.Description,
@@ -40,7 +41,7 @@ func transferDomainToProto(in domain.Task) *Task {
 	}
 }
 
-func transferProtoToDomain(in Task) *domain.Task {
+func transferProtoToDomain(in api.Task) *domain.Task {
 	return &domain.Task{
 		ID:          in.Id,
 		Name:        in.Name,
@@ -52,7 +53,7 @@ func transferProtoToDomain(in Task) *domain.Task {
 	}
 }
 
-func (serverInstance *server) List(ctx context.Context, req *ListReq) (*ListTask, error) {
+func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.ListTask, error) {
 	// TODO: Get creator id
 	var creator_id int32 = 1
 
@@ -63,11 +64,11 @@ func (serverInstance *server) List(ctx context.Context, req *ListReq) (*ListTask
 	// if req.TagsId != nil || len(req.TagsId) != 0 {
 	// 	conditions_map["tags"] = req.TagsId
 	// }
-	if req.Filter != Filter_FILTER_UNSPECIFIED {
+	if req.Filter != api.Filter_FILTER_UNSPECIFIED {
 		conditions_map["filter"] = req.Filter.String()
 	}
 
-	tasks_domain, err := serverInstance.usecase.Fetch(ctx, creator_id, req.PageToken, req.PageSize, conditions_map)
+	tasks_domain, err := serverInstance.repo.Fetch(ctx, creator_id, req.PageToken, req.PageSize, conditions_map)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -77,7 +78,7 @@ func (serverInstance *server) List(ctx context.Context, req *ListReq) (*ListTask
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
 
-	tasks_rs := &ListTask{Tasks: []*Task{}}
+	tasks_rs := &api.ListTask{Tasks: []*api.Task{}}
 	for _, task := range tasks_domain {
 		tasks_rs.Tasks = append(tasks_rs.Tasks, transferDomainToProto(task))
 	}
@@ -85,8 +86,8 @@ func (serverInstance *server) List(ctx context.Context, req *ListReq) (*ListTask
 	return tasks_rs, nil
 }
 
-func (serverInstance *server) Get(ctx context.Context, req *GetReq) (*Task, error) {
-	task, err := serverInstance.usecase.GetByID(ctx, req.Id)
+func (serverInstance *server) Get(ctx context.Context, req *api.GetReq) (*api.Task, error) {
+	task, err := serverInstance.repo.GetByID(ctx, req.Id)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -99,7 +100,7 @@ func (serverInstance *server) Get(ctx context.Context, req *GetReq) (*Task, erro
 	return transferDomainToProto(*task), nil
 }
 
-func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*Task, error) {
+func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*api.Task, error) {
 	// TODO: Get creator id
 	var creator_id int32 = 1
 
@@ -107,13 +108,13 @@ func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*Task
 		Name:        req.Name,
 		Description: req.Description,
 		IsDone:      req.IsDone,
-		Tags:        []tagDomain.Tag{},
+		// Tags:        []tagDomain.Tag{},
 	}
-	for _, task_id := range req.Tags {
-		data.Tags = append(data.Tags, tagDomain.Tag{ID: task_id})
-	}
+	// for _, task_id := range req.Tags {
+	// 	data.Tags = append(data.Tags, tagDomain.Tag{ID: task_id})
+	// }
 
-	new_task, err := serverInstance.usecase.Create(ctx, creator_id, data)
+	new_task, err := serverInstance.repo.Create(ctx, creator_id, data)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -126,9 +127,9 @@ func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*Task
 	return transferDomainToProto(*new_task), nil
 }
 
-func (serverInstance *server) Update(ctx context.Context, req *UpdateReq) (*Task, error) {
+func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*api.Task, error) {
 	data := transferProtoToDomain(*req.NewTaskInfo)
-	new_task, err := serverInstance.usecase.Update(ctx, req.Id, data, req.TagsAdded, req.TagsDeleted)
+	new_task, err := serverInstance.repo.Update(ctx, req.Id, data, req.TagsAdded, req.TagsDeleted)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -144,8 +145,8 @@ func (serverInstance *server) Update(ctx context.Context, req *UpdateReq) (*Task
 	return transferDomainToProto(*new_task), nil
 }
 
-func (serverInstance *server) DeleteMultiple(ctx context.Context, req *DeleteMultipleReq) (*emptypb.Empty, error) {
-	err := serverInstance.usecase.Delete(ctx, req.TasksId)
+func (serverInstance *server) DeleteMultiple(ctx context.Context, req *api.DeleteMultipleReq) (*emptypb.Empty, error) {
+	err := serverInstance.repo.Delete(ctx, req.TasksId)
 
 	if err != nil {
 		if errors.Is(err, domain.ErrTagNotExists) {
@@ -159,9 +160,9 @@ func (serverInstance *server) DeleteMultiple(ctx context.Context, req *DeleteMul
 
 func (serverInstance *server) DeleteAll(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	// TODO: Get creator id
-	var creator_id int32 = 1
+	// var creator_id int32 = 1
 
-	err := serverInstance.usecase.DeleteAllTaskOfUser(ctx, creator_id)
+	err := serverInstance.repo.Delete(ctx, []int32{})
 
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotExists) {

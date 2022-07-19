@@ -40,6 +40,7 @@ func (t *taskRepository) Fetch(ctx context.Context, user_id int32, offset int32,
 		queryString += "name LIKE ?"
 		queryArgs = append(queryArgs, "%"+value.(string)+"%")
 	}
+	// Cannot search by tag, association not supported
 	// if tags, ok := conditions["tags"]; ok && tags != nil {
 	// 	if queryString != "" {
 	// 		queryString += " AND "
@@ -166,4 +167,8 @@ func (t *taskRepository) IsExists(ctx context.Context, ids int32) (bool, error) 
 	}
 
 	return true, nil
+}
+
+func (t *taskRepository) GetByUserId(ctx context.Context, user_id int32) ([]int32, error) {
+	return nil, errors.New("Implemented needed")
 }

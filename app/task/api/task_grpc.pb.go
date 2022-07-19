@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.21.2
-// source: app/task/delivery/grpc/task.proto
+// source: app/task/api/task.proto
 
-package grpc
+package api
 
 import (
 	context "context"
@@ -41,7 +41,7 @@ func NewTaskHandlerClient(cc grpc.ClientConnInterface) TaskHandlerClient {
 
 func (c *taskHandlerClient) List(ctx context.Context, in *ListReq, opts ...grpc.CallOption) (*ListTask, error) {
 	out := new(ListTask)
-	err := c.cc.Invoke(ctx, "/grpc.task.TaskHandler/List", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.task.TaskHandler/List", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (c *taskHandlerClient) List(ctx context.Context, in *ListReq, opts ...grpc.
 
 func (c *taskHandlerClient) Get(ctx context.Context, in *GetReq, opts ...grpc.CallOption) (*Task, error) {
 	out := new(Task)
-	err := c.cc.Invoke(ctx, "/grpc.task.TaskHandler/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.task.TaskHandler/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (c *taskHandlerClient) Get(ctx context.Context, in *GetReq, opts ...grpc.Ca
 
 func (c *taskHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...grpc.CallOption) (*Task, error) {
 	out := new(Task)
-	err := c.cc.Invoke(ctx, "/grpc.task.TaskHandler/Create", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.task.TaskHandler/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (c *taskHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...g
 
 func (c *taskHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*Task, error) {
 	out := new(Task)
-	err := c.cc.Invoke(ctx, "/grpc.task.TaskHandler/Update", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.task.TaskHandler/Update", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (c *taskHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...g
 
 func (c *taskHandlerClient) DeleteMultiple(ctx context.Context, in *DeleteMultipleReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/grpc.task.TaskHandler/DeleteMultiple", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.task.TaskHandler/DeleteMultiple", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (c *taskHandlerClient) DeleteMultiple(ctx context.Context, in *DeleteMultip
 
 func (c *taskHandlerClient) DeleteAll(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/grpc.task.TaskHandler/DeleteAll", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.task.TaskHandler/DeleteAll", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func _TaskHandler_List_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.task.TaskHandler/List",
+		FullMethod: "/api.task.TaskHandler/List",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TaskHandlerServer).List(ctx, req.(*ListReq))
@@ -169,7 +169,7 @@ func _TaskHandler_Get_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.task.TaskHandler/Get",
+		FullMethod: "/api.task.TaskHandler/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TaskHandlerServer).Get(ctx, req.(*GetReq))
@@ -187,7 +187,7 @@ func _TaskHandler_Create_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.task.TaskHandler/Create",
+		FullMethod: "/api.task.TaskHandler/Create",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TaskHandlerServer).Create(ctx, req.(*CreateReq))
@@ -205,7 +205,7 @@ func _TaskHandler_Update_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.task.TaskHandler/Update",
+		FullMethod: "/api.task.TaskHandler/Update",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TaskHandlerServer).Update(ctx, req.(*UpdateReq))
@@ -223,7 +223,7 @@ func _TaskHandler_DeleteMultiple_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.task.TaskHandler/DeleteMultiple",
+		FullMethod: "/api.task.TaskHandler/DeleteMultiple",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TaskHandlerServer).DeleteMultiple(ctx, req.(*DeleteMultipleReq))
@@ -241,7 +241,7 @@ func _TaskHandler_DeleteAll_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpc.task.TaskHandler/DeleteAll",
+		FullMethod: "/api.task.TaskHandler/DeleteAll",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TaskHandlerServer).DeleteAll(ctx, req.(*emptypb.Empty))
@@ -253,7 +253,7 @@ func _TaskHandler_DeleteAll_Handler(srv interface{}, ctx context.Context, dec fu
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TaskHandler_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "grpc.task.TaskHandler",
+	ServiceName: "api.task.TaskHandler",
 	HandlerType: (*TaskHandlerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -282,5 +282,5 @@ var TaskHandler_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/task/delivery/grpc/task.proto",
+	Metadata: "app/task/api/task.proto",
 }

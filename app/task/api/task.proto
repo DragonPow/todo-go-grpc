@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package grpc.task;
+package api.task;
 
-option go_package = "../grpc";
+option go_package = "../api";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";

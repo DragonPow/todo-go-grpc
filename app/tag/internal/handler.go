@@ -1,13 +1,13 @@
-package grpc
+package internal
 
 import (
 	"context"
 	"errors"
 	"log"
-	"todo-go-grpc/app/tag/domain"
-	_usecase "todo-go-grpc/app/tag/usecase"
-
 	response_service "todo-go-grpc/app/responseservice"
+	api "todo-go-grpc/app/tag/api"
+	domain "todo-go-grpc/app/tag/domain"
+	repository "todo-go-grpc/app/tag/repository"
 
 	"google.golang.org/grpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -15,20 +15,20 @@ import (
 )
 
 type server struct {
-	usecase _usecase.TagUsecase
-	UnimplementedTagHandlerServer
+	repo repository.TagRepository
+	api.UnimplementedTagHandlerServer
 }
 
-func RegisterGrpc(gserver *grpc.Server, tagUsecase _usecase.TagUsecase) {
+func RegisterGrpc(gserver *grpc.Server, repo repository.TagRepository) {
 	tagServer := &server{
-		usecase: tagUsecase,
+		repo: repo,
 	}
 
-	RegisterTagHandlerServer(gserver, tagServer)
+	api.RegisterTagHandlerServer(gserver, tagServer)
 }
 
-func transferDomainToProto(in domain.Tag) *Tag {
-	return &Tag{
+func transferDomainToProto(in domain.Tag) *api.Tag {
+	return &api.Tag{
 		Id:          in.ID,
 		Value:       in.Value,
 		Description: in.Description,
@@ -36,7 +36,7 @@ func transferDomainToProto(in domain.Tag) *Tag {
 	}
 }
 
-func transferProtoToDomain(in Tag) *domain.Tag {
+func transferProtoToDomain(in api.Tag) *domain.Tag {
 	return &domain.Tag{
 		ID:          in.Id,
 		Description: in.Description,
@@ -45,19 +45,19 @@ func transferProtoToDomain(in Tag) *domain.Tag {
 	}
 }
 
-func (serverInstance *server) List(ctx context.Context, req *ListReq) (*ListTag, error) {
+func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.ListTag, error) {
 	if err := req.Valid(); err != nil {
 		return nil, response_service.ResponseErrorInvalidArgument(err)
 	}
 
-	tags_domain, err := serverInstance.usecase.FetchAll(ctx)
+	tags_domain, err := serverInstance.repo.FetchAll(ctx)
 
 	if err != nil {
 		log.Println(err.Error())
 		return nil, response_service.ResponseErrorUnknown(err)
 	}
 
-	tags_rs := &ListTag{Tags: []*Tag{}}
+	tags_rs := &api.ListTag{Tags: []*api.Tag{}}
 	for _, task := range tags_domain {
 		tags_rs.Tags = append(tags_rs.Tags, transferDomainToProto(task))
 	}
@@ -65,8 +65,12 @@ func (serverInstance *server) List(ctx context.Context, req *ListReq) (*ListTag,
 	return tags_rs, nil
 }
 
-func (serverInstance *server) Get(ctx context.Context, req *GetReq) (*Tag, error) {
-	task, err := serverInstance.usecase.GetByID(ctx, req.Id)
+func (serverInstance *server) Get(ctx context.Context, req *api.GetReq) (*api.Tag, error) {
+	if err := req.Valid(); err != nil {
+		return nil, response_service.ResponseErrorInvalidArgument(err)
+	}
+
+	task, err := serverInstance.repo.GetByID(ctx, req.Id)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -79,8 +83,12 @@ func (serverInstance *server) Get(ctx context.Context, req *GetReq) (*Tag, error
 	return transferDomainToProto(*task), nil
 }
 
-func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*Tag, error) {
-	new_tag, err := serverInstance.usecase.Create(ctx, &domain.Tag{
+func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*api.Tag, error) {
+	if err := req.Valid(); err != nil {
+		return nil, response_service.ResponseErrorInvalidArgument(err)
+	}
+
+	new_tag, err := serverInstance.repo.Create(ctx, &domain.Tag{
 		Value:       req.Value,
 		Description: req.Description,
 	})
@@ -96,9 +104,13 @@ func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*Tag,
 	return transferDomainToProto(*new_tag), nil
 }
 
-func (serverInstance *server) Update(ctx context.Context, req *UpdateReq) (*Tag, error) {
+func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*api.Tag, error) {
+	if err := req.Valid(); err != nil {
+		return nil, response_service.ResponseErrorInvalidArgument(err)
+	}
+
 	data := transferProtoToDomain(*req.NewTagInfo)
-	new_tag, err := serverInstance.usecase.Update(ctx, req.Id, data)
+	new_tag, err := serverInstance.repo.Update(ctx, req.Id, data)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -111,8 +123,12 @@ func (serverInstance *server) Update(ctx context.Context, req *UpdateReq) (*Tag,
 	return transferDomainToProto(*new_tag), nil
 }
 
-func (serverInstance *server) Delete(ctx context.Context, req *DeleteReq) (*emptypb.Empty, error) {
-	err := serverInstance.usecase.Delete(ctx, req.Id)
+func (serverInstance *server) Delete(ctx context.Context, req *api.DeleteReq) (*emptypb.Empty, error) {
+	if err := req.Valid(); err != nil {
+		return nil, response_service.ResponseErrorInvalidArgument(err)
+	}
+
+	err := serverInstance.repo.Delete(ctx, req.Id)
 
 	if err != nil {
 		if errors.Is(err, domain.ErrTagNotExists) {
