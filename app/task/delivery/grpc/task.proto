@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package gprc;
+package grpc.task;
 
 option go_package = "../grpc";
 
@@ -52,8 +52,7 @@ message ListReq {
     int32 page_size         = 1;
     int32 page_token        = 2;
     string name             = 3;
-    repeated string tags_id = 4;
-    Filter filter           = 5;
+    Filter filter           = 4;
 }
 
 message GetReq {
@@ -95,8 +94,8 @@ message Task {
 
 enum Filter {
     FILTER_UNSPECIFIED = 0;
-    TIME_UPDATE_ASC    = 1;
-    TIME_UPDATE_DESC   = 2;
-    TIME_CREATE_ASC    = 3;
-    TIME_CREATE_DESC   = 4;
+    // TIME_UPDATE_ASC    = 1;
+    // TIME_UPDATE_DESC   = 2;
+    TIME_CREATE_ASC    = 1;
+    TIME_CREATE_DESC   = 2;
 }

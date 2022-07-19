@@ -81,14 +81,8 @@ func (t *taskUsecase) Create(ctx context.Context, creator_id int32, info *domain
 		}
 	}()
 
-	_, err := t.userRepo.GetByID(ctx, creator_id)
-	if err != nil {
-		return nil, err
-	}
-
-	// What is this???
-	_, err = t.tagRepo.FetchAll(ctx)
-	if err != nil {
+	// Check user exists
+	if _, err := t.userRepo.GetByID(ctx, creator_id); err != nil {
 		return nil, err
 	}
 

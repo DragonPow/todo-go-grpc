@@ -20,7 +20,7 @@ type server struct {
 	UnimplementedTaskHandlerServer
 }
 
-func NewTagServerGrpc(gserver *grpc.Server, tagUsecase _usecase.TaskUsecase) {
+func RegisterGrpc(gserver *grpc.Server, tagUsecase _usecase.TaskUsecase) {
 	taskServer := &server{
 		usecase: tagUsecase,
 	}
@@ -60,9 +60,9 @@ func (serverInstance *server) List(ctx context.Context, req *ListReq) (*ListTask
 	if req.Name != "" {
 		conditions_map["name"] = req.Name
 	}
-	if req.TagsId != nil || len(req.TagsId) != 0 {
-		conditions_map["tags"] = req.TagsId
-	}
+	// if req.TagsId != nil || len(req.TagsId) != 0 {
+	// 	conditions_map["tags"] = req.TagsId
+	// }
 	if req.Filter != Filter_FILTER_UNSPECIFIED {
 		conditions_map["filter"] = req.Filter.String()
 	}
@@ -103,12 +103,17 @@ func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*Task
 	// TODO: Get creator id
 	var creator_id int32 = 1
 
-	new_task, err := serverInstance.usecase.Create(ctx, creator_id, &domain.Task{
+	data := &domain.Task{
 		Name:        req.Name,
 		Description: req.Description,
 		IsDone:      req.IsDone,
 		Tags:        []tagDomain.Tag{},
-	})
+	}
+	for _, task_id := range req.Tags {
+		data.Tags = append(data.Tags, tagDomain.Tag{ID: task_id})
+	}
+
+	new_task, err := serverInstance.usecase.Create(ctx, creator_id, data)
 
 	if err != nil {
 		log.Println(err.Error())

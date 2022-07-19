@@ -32,9 +32,10 @@ func SearchUserByIds(ctx context.Context, ids []int32, db *gorm.DB) (tasks []dom
 func (t *taskRepository) Fetch(ctx context.Context, user_id int32, offset int32, number int32, conditions map[string]any) ([]domain.Task, error) {
 	var tasks []domain.Task
 	var queryString string
-	tx := t.Conn.Db
+	tx := t.Conn.Db.Preload("UserCreator").Preload("Tags")
 	queryArgs := []interface{}{}
 
+	// Check condition and add to queryString
 	if value, ok := conditions["name"]; ok {
 		queryString += "name LIKE ?"
 		queryArgs = append(queryArgs, "%"+value.(string)+"%")
@@ -44,7 +45,7 @@ func (t *taskRepository) Fetch(ctx context.Context, user_id int32, offset int32,
 	// 		queryString += " AND "
 	// 	}
 
-	// 	queryString += "tags IN ?"
+	// 	queryString += "tag_id IN ?"
 	// 	queryArgs = append(queryArgs, tags.([]int32))
 	// }
 
@@ -52,7 +53,19 @@ func (t *taskRepository) Fetch(ctx context.Context, user_id int32, offset int32,
 		tx = tx.Where(queryString, queryArgs...)
 	}
 
-	if err := tx.Preload("UserCreator").Preload("Tags").Limit(int(number)).Offset(int(offset)).Find(&tasks).Error; err != nil {
+	// Set order
+	if filter, ok := conditions["filter"]; ok && filter != nil {
+		switch filter {
+		case "TIME_CREATE_ASC":
+			tx = tx.Order("created_at asc")
+		case "TIME_CREATE_DESC":
+			tx = tx.Order("created_at desc")
+		}
+	} else {
+		tx = tx.Order("id asc")
+	}
+
+	if err := tx.Limit(int(number)).Offset(int(offset)).Find(&tasks).Error; err != nil {
 		return nil, err
 	}
 
@@ -73,6 +86,7 @@ func (t *taskRepository) GetByID(ctx context.Context, id int32) (*domain.Task, e
 }
 
 func (t *taskRepository) Create(ctx context.Context, creator_id int32, info *domain.Task) (*domain.Task, error) {
+	info.CreatorId = creator_id
 	if err := t.Conn.Db.Create(&info).Error; err != nil {
 		if pgError, ok := err.(*pgconn.PgError); ok && errors.Is(err, pgError) {
 			if pgError.Code == "23503" {
@@ -82,22 +96,27 @@ func (t *taskRepository) Create(ctx context.Context, creator_id int32, info *dom
 		return nil, err
 	}
 
-	// // Add tags to task
-	// if err := tx.Model(&new_task).Association("Tags").Append(&new_task.Tags); err != nil {
-	// 	return domain.Task{}, err
-	// }
+	// Add tags to task
+	if err := t.Conn.Db.Model(&info).Association("Tags").Append(&info.Tags); err != nil {
+		return nil, err
+	}
 
 	// if err := tx.Model(&new_task).Association("UserCreator").Replace(&new_task.UserCreator); err != nil {
 	// 	return domain.Task{}, err
 	// }
 
-	// TODO: implement new_task here
-	return nil, nil
+	return info, nil
 }
 
 func (t *taskRepository) Update(ctx context.Context, id int32, new_info *domain.Task, tags_add []int32, tags_remove []int32) (*domain.Task, error) {
+	new_task_map := map[string]any{}
+	new_task_map["name"] = new_info.Name
+	new_task_map["description"] = new_info.Description
+	new_task_map["is_done"] = new_info.IsDone
+	new_task_map["creator_id"] = new_info.CreatorId
+
 	// Update information
-	if err := t.Conn.Db.Model(&domain.Task{ID: id}).Updates(new_info).Error; err != nil {
+	if err := t.Conn.Db.First(&new_info, id).Updates(new_task_map).Error; err != nil {
 		return nil, err
 	}
 
@@ -109,15 +128,15 @@ func (t *taskRepository) Update(ctx context.Context, id int32, new_info *domain.
 		return tags
 	}
 
-	if err := t.Conn.Db.Model(&domain.Task{ID: id}).Association("Tags").Append(tranferIdToTag(tags_add)); err != nil {
+	if err := t.Conn.Db.Model(&new_info).Association("Tags").Append(tranferIdToTag(tags_add)); err != nil {
 		return nil, err
 	}
-	if err := t.Conn.Db.Model(&domain.Task{ID: id}).Association("Tags").Delete(tranferIdToTag(tags_remove)); err != nil {
+	if err := t.Conn.Db.Model(&new_info).Association("Tags").Delete(tranferIdToTag(tags_remove)); err != nil {
 		return nil, err
 	}
 
 	// TODO: implement new_info here
-	return nil, nil
+	return new_info, nil
 }
 
 func (t *taskRepository) Delete(ctx context.Context, ids []int32) error {
@@ -125,13 +144,9 @@ func (t *taskRepository) Delete(ctx context.Context, ids []int32) error {
 		return nil
 	}
 
-	// Delete tags associated with tasks
-	for _, id := range ids {
-		t.Conn.Db.Model(&domain.Task{ID: id}).Association("Tags").Clear()
-	}
-
 	// Delete tasks
-	if err := t.Conn.Db.Delete(&domain.Task{}, ids).Error; err != nil {
+	// Add Select("Tags") to delete association of task and tag
+	if err := t.Conn.Db.Select("Tags").Delete(&domain.Task{}, ids).Error; err != nil {
 		return err
 	}
 

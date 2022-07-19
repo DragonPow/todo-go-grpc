@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package gprc;
+package grpc.tag;
 
 option go_package = "../grpc";
 
