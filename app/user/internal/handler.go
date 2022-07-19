@@ -1,13 +1,14 @@
-package grpc
+package internal
 
 import (
 	"context"
 	"errors"
 	"log"
-	"todo-go-grpc/app/user/domain"
-	_usecase "todo-go-grpc/app/user/usecase"
 
 	response_service "todo-go-grpc/app/responseservice"
+	api "todo-go-grpc/app/user/api"
+	domain "todo-go-grpc/app/user/domain"
+	repository "todo-go-grpc/app/user/repository"
 
 	grpc "google.golang.org/grpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -15,20 +16,20 @@ import (
 )
 
 type server struct {
-	usecase _usecase.UserUsecase
-	UnimplementedUserHandlerServer
+	repo repository.UserRepository
+	api.UnimplementedUserHandlerServer
 }
 
-func RegisterGrpc(gserver *grpc.Server, userUsecase _usecase.UserUsecase) {
+func RegisterGrpc(gserver *grpc.Server, repo repository.UserRepository) {
 	userServer := &server{
-		usecase: userUsecase,
+		repo: repo,
 	}
 
-	RegisterUserHandlerServer(gserver, userServer)
+	api.RegisterUserHandlerServer(gserver, userServer)
 }
 
-func transferDomainToProto(in domain.User) *User {
-	return &User{
+func transferDomainToProto(in domain.User) *api.User {
+	return &api.User{
 		Id:          in.ID,
 		Name:        in.Name,
 		Username:    in.Username,
@@ -37,7 +38,7 @@ func transferDomainToProto(in domain.User) *User {
 	}
 }
 
-func transferProtoToDomain(in User) *domain.User {
+func transferProtoToDomain(in api.User) *domain.User {
 	return &domain.User{
 		ID:        in.Id,
 		Name:      in.Name,
@@ -47,12 +48,12 @@ func transferProtoToDomain(in User) *domain.User {
 	}
 }
 
-func (serverInstance *server) Login(ctx context.Context, req *LoginReq) (*BasicUser, error) {
+func (serverInstance *server) Login(ctx context.Context, req *api.LoginReq) (*api.BasicUser, error) {
 	if err := req.Valid(); err != nil {
 		return nil, response_service.ResponseErrorInvalidArgument(err)
 	}
 
-	user, err := serverInstance.usecase.Login(ctx, req.Username, req.Password)
+	user, err := serverInstance.repo.GetByUsernameAndPassword(ctx, req.Username, req.Password)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -64,7 +65,7 @@ func (serverInstance *server) Login(ctx context.Context, req *LoginReq) (*BasicU
 
 	// TODO: set token here
 
-	user_basic := BasicUser{
+	user_basic := api.BasicUser{
 		Id:       user.ID,
 		Name:     user.Name,
 		Username: user.Username,
@@ -74,12 +75,12 @@ func (serverInstance *server) Login(ctx context.Context, req *LoginReq) (*BasicU
 	return &user_basic, nil
 }
 
-func (serverInstance *server) Get(ctx context.Context, req *GetReq) (*User, error) {
+func (serverInstance *server) Get(ctx context.Context, req *api.GetReq) (*api.User, error) {
 	if err := req.Valid(); err != nil {
 		return nil, response_service.ResponseErrorInvalidArgument(err)
 	}
 
-	user, err := serverInstance.usecase.GetByID(ctx, req.Id)
+	user, err := serverInstance.repo.GetByID(ctx, req.Id)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -92,12 +93,12 @@ func (serverInstance *server) Get(ctx context.Context, req *GetReq) (*User, erro
 	return transferDomainToProto(*user), nil
 }
 
-func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*User, error) {
+func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*api.User, error) {
 	if err := req.Valid(); err != nil {
 		return nil, response_service.ResponseErrorInvalidArgument(err)
 	}
 
-	new_user, err := serverInstance.usecase.Create(ctx, &domain.User{
+	new_user, err := serverInstance.repo.Create(ctx, &domain.User{
 		Name:     req.Name,
 		Username: req.Username,
 		Password: req.Password,
@@ -114,13 +115,13 @@ func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*User
 	return transferDomainToProto(*new_user), nil
 }
 
-func (serverInstance *server) Update(ctx context.Context, req *UpdateReq) (*User, error) {
+func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*api.User, error) {
 	if err := req.Valid(); err != nil {
 		return nil, response_service.ResponseErrorInvalidArgument(err)
 	}
 
 	data := transferProtoToDomain(*req.NewUserInfor)
-	new_user, err := serverInstance.usecase.Update(ctx, req.Id, data)
+	new_user, err := serverInstance.repo.Update(ctx, req.Id, data)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -133,12 +134,12 @@ func (serverInstance *server) Update(ctx context.Context, req *UpdateReq) (*User
 	return transferDomainToProto(*new_user), nil
 }
 
-func (serverInstance *server) Delete(ctx context.Context, req *DeleteReq) (*emptypb.Empty, error) {
+func (serverInstance *server) Delete(ctx context.Context, req *api.DeleteReq) (*emptypb.Empty, error) {
 	if err := req.Valid(); err != nil {
 		return nil, response_service.ResponseErrorInvalidArgument(err)
 	}
 
-	if err := serverInstance.usecase.Delete(ctx, req.Id); err != nil {
+	if err := serverInstance.repo.Delete(ctx, req.Id); err != nil {
 		if errors.Is(err, domain.ErrUserNotExists) {
 			return nil, response_service.ResponseErrorNotFound(err)
 		}
