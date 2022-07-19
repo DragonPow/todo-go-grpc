@@ -7,9 +7,9 @@ import (
 	"todo-go-grpc/app/tag/domain"
 	_usecase "todo-go-grpc/app/tag/usecase"
 
+	response_service "todo-go-grpc/app/responseservice"
+
 	"google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	grpc_status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -19,7 +19,7 @@ type server struct {
 	UnimplementedTagHandlerServer
 }
 
-func NewTagServerGrpc(gserver *grpc.Server, tagUsecase _usecase.TagUsecase) {
+func RegisterGrpc(gserver *grpc.Server, tagUsecase _usecase.TagUsecase) {
 	tagServer := &server{
 		usecase: tagUsecase,
 	}
@@ -30,6 +30,7 @@ func NewTagServerGrpc(gserver *grpc.Server, tagUsecase _usecase.TagUsecase) {
 func transferDomainToProto(in domain.Tag) *Tag {
 	return &Tag{
 		Id:          in.ID,
+		Value:       in.Value,
 		Description: in.Description,
 		CreatedTime: timestamppb.New(in.CreatedAt),
 	}
@@ -39,16 +40,21 @@ func transferProtoToDomain(in Tag) *domain.Tag {
 	return &domain.Tag{
 		ID:          in.Id,
 		Description: in.Description,
+		Value:       in.Value,
 		CreatedAt:   in.CreatedTime.AsTime(),
 	}
 }
 
 func (serverInstance *server) List(ctx context.Context, req *ListReq) (*ListTag, error) {
+	if err := req.Valid(); err != nil {
+		return nil, response_service.ResponseErrorInvalidArgument(err)
+	}
+
 	tags_domain, err := serverInstance.usecase.FetchAll(ctx)
 
 	if err != nil {
 		log.Println(err.Error())
-		return nil, grpc_status.Error(codes.Unknown, err.Error())
+		return nil, response_service.ResponseErrorUnknown(err)
 	}
 
 	tags_rs := &ListTag{Tags: []*Tag{}}
@@ -65,9 +71,9 @@ func (serverInstance *server) Get(ctx context.Context, req *GetReq) (*Tag, error
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTagNotExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
-		return nil, grpc_status.Error(codes.Unknown, err.Error())
+		return nil, response_service.ResponseErrorUnknown(err)
 	}
 
 	return transferDomainToProto(*task), nil
@@ -82,9 +88,9 @@ func (serverInstance *server) Create(ctx context.Context, req *CreateReq) (*Tag,
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTagIsExists) {
-			return nil, grpc_status.Error(codes.AlreadyExists, err.Error())
+			return nil, response_service.ResponseErrorAlreadyExists(err)
 		}
-		return nil, grpc_status.Error(codes.Unknown, err.Error())
+		return nil, response_service.ResponseErrorUnknown(err)
 	}
 
 	return transferDomainToProto(*new_tag), nil
@@ -97,9 +103,9 @@ func (serverInstance *server) Update(ctx context.Context, req *UpdateReq) (*Tag,
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTagIsExists) {
-			return nil, grpc_status.Error(codes.AlreadyExists, err.Error())
+			return nil, response_service.ResponseErrorAlreadyExists(err)
 		}
-		return nil, grpc_status.Error(codes.Unknown, err.Error())
+		return nil, response_service.ResponseErrorUnknown(err)
 	}
 
 	return transferDomainToProto(*new_tag), nil
@@ -110,10 +116,10 @@ func (serverInstance *server) Delete(ctx context.Context, req *DeleteReq) (*empt
 
 	if err != nil {
 		if errors.Is(err, domain.ErrTagNotExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
-		return nil, grpc_status.Error(codes.Unknown, err.Error())
+		return nil, response_service.ResponseErrorUnknown(err)
 	}
 
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }

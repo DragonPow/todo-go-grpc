@@ -55,17 +55,25 @@ func (t *tagRepository) Create(ctx context.Context, info *domain.Tag) (*domain.T
 		return nil, err
 	}
 
-	// TODO: implement here new_tag
-	return nil, nil
+	return info, nil
 }
 
 func (t *tagRepository) Update(ctx context.Context, id int32, new_info *domain.Tag) (*domain.Tag, error) {
-	tag := domain.Tag{ID: id}
-	if err := t.Conn.Db.First(&tag).Updates(new_info).Error; err != nil {
+	new_info_map := map[string]any{}
+	new_info_map["value"] = new_info.Value
+	new_info_map["description"] = new_info.Description
+
+	if err := t.Conn.Db.First(&new_info, id).Updates(new_info_map).Error; err != nil {
+		if pgError, ok := err.(*pgconn.PgError); ok && errors.Is(err, pgError) {
+			// Value of tag is duplicate
+			if pgError.Code == "23505" {
+				return nil, domain.ErrTagIsExists
+			}
+		}
 		return nil, err
 	}
 
-	return &tag, nil
+	return new_info, nil
 }
 
 func (t *tagRepository) Delete(ctx context.Context, id int32) error {

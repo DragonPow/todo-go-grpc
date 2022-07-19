@@ -1,13 +1,12 @@
 syntax = "proto3";
 
-package gprc;
+package grpc;
 
 option go_package = "../grpc";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
-import "validate/validate.proto";
 
 service UserHandler {
     rpc Login(LoginReq) returns (BasicUser) {
@@ -45,8 +44,8 @@ service UserHandler {
 }
 
 message LoginReq {
-    string username = 1 [(validate.rules).message.required = true];
-    string password = 2 [(validate.rules).message.required = true];
+    string username = 1;
+    string password = 2;
 }
 
 message GetReq {
@@ -54,13 +53,13 @@ message GetReq {
 }
 
 message CreateReq {
-    string name     = 1 [(validate.rules).message.required = true];
-    string username = 2 [(validate.rules).message.required = true];
-    string password = 3 [(validate.rules).message.required = true];
+    string name     = 1;
+    string username = 2;
+    string password = 3;
 }
 
 message UpdateReq {
-    int32 id = 1 [(validate.rules).message.required = true];
+    int32 id = 1;
     User new_user_infor = 2;
 }
 

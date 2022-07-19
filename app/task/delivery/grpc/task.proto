@@ -7,7 +7,6 @@ option go_package = "../grpc";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
-import "validate/validate.proto";
 
 service TaskHandler {
     rpc List(ListReq) returns (ListTask) {
@@ -69,10 +68,10 @@ message CreateReq {
 }
 
 message UpdateReq {
-    int32 id                    = 1 [(validate.rules).message.required = true];
+    int32 id                    = 1;
     Task new_task_info          = 2;
     repeated int32 tags_added   = 3;
-    repeated int32 tags_deleted = 4 [(validate.rules).message.required = true];
+    repeated int32 tags_deleted = 4;
 }
 
 message DeleteMultipleReq {

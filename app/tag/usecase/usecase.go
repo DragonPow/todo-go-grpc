@@ -54,7 +54,11 @@ func (t *tagUsecase) Create(ctx context.Context, info *domain.Tag) (*domain.Tag,
 }
 
 func (t *tagUsecase) Update(ctx context.Context, id int32, new_info *domain.Tag) (*domain.Tag, error) {
-	return nil, fmt.Errorf("Implemented needed")
+	tag, err := t.tagRepo.Update(ctx, id, new_info)
+	if err != nil {
+		return nil, err
+	}
+	return tag, nil
 }
 
 func (t *tagUsecase) Delete(ctx context.Context, id int32) error {

@@ -40,7 +40,7 @@ func NewUserHandlerClient(cc grpc.ClientConnInterface) UserHandlerClient {
 
 func (c *userHandlerClient) Login(ctx context.Context, in *LoginReq, opts ...grpc.CallOption) (*BasicUser, error) {
 	out := new(BasicUser)
-	err := c.cc.Invoke(ctx, "/gprc.UserHandler/Login", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.UserHandler/Login", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (c *userHandlerClient) Login(ctx context.Context, in *LoginReq, opts ...grp
 
 func (c *userHandlerClient) Get(ctx context.Context, in *GetReq, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
-	err := c.cc.Invoke(ctx, "/gprc.UserHandler/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.UserHandler/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (c *userHandlerClient) Get(ctx context.Context, in *GetReq, opts ...grpc.Ca
 
 func (c *userHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
-	err := c.cc.Invoke(ctx, "/gprc.UserHandler/Create", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.UserHandler/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (c *userHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...g
 
 func (c *userHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
-	err := c.cc.Invoke(ctx, "/gprc.UserHandler/Update", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.UserHandler/Update", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (c *userHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...g
 
 func (c *userHandlerClient) Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/gprc.UserHandler/Delete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.UserHandler/Delete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func _UserHandler_Login_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/gprc.UserHandler/Login",
+		FullMethod: "/grpc.UserHandler/Login",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserHandlerServer).Login(ctx, req.(*LoginReq))
@@ -155,7 +155,7 @@ func _UserHandler_Get_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/gprc.UserHandler/Get",
+		FullMethod: "/grpc.UserHandler/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserHandlerServer).Get(ctx, req.(*GetReq))
@@ -173,7 +173,7 @@ func _UserHandler_Create_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/gprc.UserHandler/Create",
+		FullMethod: "/grpc.UserHandler/Create",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserHandlerServer).Create(ctx, req.(*CreateReq))
@@ -191,7 +191,7 @@ func _UserHandler_Update_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/gprc.UserHandler/Update",
+		FullMethod: "/grpc.UserHandler/Update",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserHandlerServer).Update(ctx, req.(*UpdateReq))
@@ -209,7 +209,7 @@ func _UserHandler_Delete_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/gprc.UserHandler/Delete",
+		FullMethod: "/grpc.UserHandler/Delete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserHandlerServer).Delete(ctx, req.(*DeleteReq))
@@ -221,7 +221,7 @@ func _UserHandler_Delete_Handler(srv interface{}, ctx context.Context, dec func(
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var UserHandler_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "gprc.UserHandler",
+	ServiceName: "grpc.UserHandler",
 	HandlerType: (*UserHandlerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

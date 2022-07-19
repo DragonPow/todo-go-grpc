@@ -7,7 +7,6 @@ option go_package = "../grpc";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
-import "validate/validate.proto";
 
 service TagHandler {
     rpc List(ListReq) returns (ListTag) {
@@ -56,7 +55,7 @@ message CreateReq {
 }
 
 message UpdateReq {
-    int32 id  = 1 [(validate.rules).message.required = true];
+    int32 id  = 1;
     Tag new_tag_info = 2;
 }
 

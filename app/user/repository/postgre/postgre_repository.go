@@ -73,14 +73,11 @@ func (u *userRepository) Update(ctx context.Context, id int32, new_info *domain.
 		"password": new_info.Password,
 	}
 
-	user := &domain.User{ID: id}
-
-	if err := u.Conn.Db.First(user).Updates(&update).Error; err != nil {
+	if err := u.Conn.Db.First(&new_info, id).Updates(&update).Error; err != nil {
 		return nil, err
 	}
 
-	// TODO: implement new_info here
-	return user, nil
+	return new_info, nil
 }
 
 func (u *userRepository) Delete(ctx context.Context, id int32) error {
