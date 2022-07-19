@@ -25,8 +25,8 @@ const _ = grpc.SupportPackageIsVersion7
 type TaskHandlerClient interface {
 	List(ctx context.Context, in *ListReq, opts ...grpc.CallOption) (*ListTask, error)
 	Get(ctx context.Context, in *GetReq, opts ...grpc.CallOption) (*Task, error)
-	Create(ctx context.Context, in *CreateReq, opts ...grpc.CallOption) (*Task, error)
-	Update(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*Task, error)
+	Create(ctx context.Context, in *CreateReq, opts ...grpc.CallOption) (*BasicTask, error)
+	Update(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*BasicTask, error)
 	DeleteMultiple(ctx context.Context, in *DeleteMultipleReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAll(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -57,8 +57,8 @@ func (c *taskHandlerClient) Get(ctx context.Context, in *GetReq, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *taskHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...grpc.CallOption) (*Task, error) {
-	out := new(Task)
+func (c *taskHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...grpc.CallOption) (*BasicTask, error) {
+	out := new(BasicTask)
 	err := c.cc.Invoke(ctx, "/api.task.TaskHandler/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -66,8 +66,8 @@ func (c *taskHandlerClient) Create(ctx context.Context, in *CreateReq, opts ...g
 	return out, nil
 }
 
-func (c *taskHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*Task, error) {
-	out := new(Task)
+func (c *taskHandlerClient) Update(ctx context.Context, in *UpdateReq, opts ...grpc.CallOption) (*BasicTask, error) {
+	out := new(BasicTask)
 	err := c.cc.Invoke(ctx, "/api.task.TaskHandler/Update", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -99,8 +99,8 @@ func (c *taskHandlerClient) DeleteAll(ctx context.Context, in *emptypb.Empty, op
 type TaskHandlerServer interface {
 	List(context.Context, *ListReq) (*ListTask, error)
 	Get(context.Context, *GetReq) (*Task, error)
-	Create(context.Context, *CreateReq) (*Task, error)
-	Update(context.Context, *UpdateReq) (*Task, error)
+	Create(context.Context, *CreateReq) (*BasicTask, error)
+	Update(context.Context, *UpdateReq) (*BasicTask, error)
 	DeleteMultiple(context.Context, *DeleteMultipleReq) (*emptypb.Empty, error)
 	DeleteAll(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedTaskHandlerServer()
@@ -116,10 +116,10 @@ func (UnimplementedTaskHandlerServer) List(context.Context, *ListReq) (*ListTask
 func (UnimplementedTaskHandlerServer) Get(context.Context, *GetReq) (*Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedTaskHandlerServer) Create(context.Context, *CreateReq) (*Task, error) {
+func (UnimplementedTaskHandlerServer) Create(context.Context, *CreateReq) (*BasicTask, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedTaskHandlerServer) Update(context.Context, *UpdateReq) (*Task, error) {
+func (UnimplementedTaskHandlerServer) Update(context.Context, *UpdateReq) (*BasicTask, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedTaskHandlerServer) DeleteMultiple(context.Context, *DeleteMultipleReq) (*emptypb.Empty, error) {

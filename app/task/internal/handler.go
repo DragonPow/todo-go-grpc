@@ -29,8 +29,30 @@ func RegisterGrpc(gserver *grpc.Server, repo repository.TaskRepository) {
 	api.RegisterTaskHandlerServer(gserver, taskServer)
 }
 
-func transferDomainToProto(in domain.Task) *api.Task {
+func transferDomainToTask(in *domain.Task) *api.Task {
 	return &api.Task{
+		Id:          in.ID,
+		Name:        in.Name,
+		Description: in.Description,
+		IsDone:      in.IsDone,
+		DonedTime:   timestamppb.New(in.DoneAt),
+		CreatedTime: timestamppb.New(in.CreatedAt),
+	}
+}
+
+func transferTaskToDomain(in *api.Task) *domain.Task {
+	return &domain.Task{
+		ID:          in.Id,
+		Name:        in.Name,
+		Description: in.Description,
+		IsDone:      in.IsDone,
+		DoneAt:      in.DonedTime.AsTime(),
+		CreatedAt:   in.CreatedTime.AsTime(),
+	}
+}
+
+func transferDomainToBasicTask(in *domain.Task) *api.BasicTask {
+	return &api.BasicTask{
 		Id:          in.ID,
 		Name:        in.Name,
 		Description: in.Description,
@@ -41,7 +63,7 @@ func transferDomainToProto(in domain.Task) *api.Task {
 	}
 }
 
-func transferProtoToDomain(in api.Task) *domain.Task {
+func transferBasicTaskToDomain(in *api.BasicTask) *domain.Task {
 	return &domain.Task{
 		ID:          in.Id,
 		Name:        in.Name,
@@ -80,7 +102,7 @@ func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.
 
 	tasks_rs := &api.ListTask{Tasks: []*api.Task{}}
 	for _, task := range tasks_domain {
-		tasks_rs.Tasks = append(tasks_rs.Tasks, transferDomainToProto(task))
+		tasks_rs.Tasks = append(tasks_rs.Tasks, transferDomainToTask(&task))
 	}
 
 	return tasks_rs, nil
@@ -97,10 +119,10 @@ func (serverInstance *server) Get(ctx context.Context, req *api.GetReq) (*api.Ta
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
 
-	return transferDomainToProto(*task), nil
+	return transferDomainToTask(task), nil
 }
 
-func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*api.Task, error) {
+func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*api.BasicTask, error) {
 	// TODO: Get creator id
 	var creator_id int32 = 1
 
@@ -124,11 +146,11 @@ func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
 
-	return transferDomainToProto(*new_task), nil
+	return transferDomainToBasicTask(new_task), nil
 }
 
-func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*api.Task, error) {
-	data := transferProtoToDomain(*req.NewTaskInfo)
+func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*api.BasicTask, error) {
+	data := transferBasicTaskToDomain(req.NewTaskInfo)
 	new_task, err := serverInstance.repo.Update(ctx, req.Id, data, req.TagsAdded, req.TagsDeleted)
 
 	if err != nil {
@@ -142,7 +164,7 @@ func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
 
-	return transferDomainToProto(*new_task), nil
+	return transferDomainToBasicTask(new_task), nil
 }
 
 func (serverInstance *server) DeleteMultiple(ctx context.Context, req *api.DeleteMultipleReq) (*emptypb.Empty, error) {

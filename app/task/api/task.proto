@@ -21,14 +21,14 @@ service TaskHandler {
         };
     };
 
-    rpc Create(CreateReq) returns (Task) {
+    rpc Create(CreateReq) returns (BasicTask) {
         option (google.api.http) = {
             post: "/tasks/"
             body: "*"
         };
     };
 
-    rpc Update(UpdateReq) returns (Task) {
+    rpc Update(UpdateReq) returns (BasicTask) {
         option (google.api.http) = {
             put: "/tasks/{id}"
             body: "*"
@@ -68,7 +68,7 @@ message CreateReq {
 
 message UpdateReq {
     int32 id                    = 1;
-    Task new_task_info          = 2;
+    BasicTask new_task_info     = 2;
     repeated int32 tags_added   = 3;
     repeated int32 tags_deleted = 4;
 }
@@ -81,15 +81,38 @@ message ListTask {
     repeated Task tasks = 1;
 }
 
-message Task {
+message BasicTask {
     int32 id                               = 1;
     string name                            = 2;
     string description                     = 3;
     bool is_done                           = 4;
     int32 creator_id                       = 5;
-    repeated int32 tags                    = 6;
+    repeated int32 tags_id                 = 6;
     google.protobuf.Timestamp created_time = 7;
     google.protobuf.Timestamp doned_time   = 8;
+}
+
+message Task {
+    int32 id                               = 1;
+    string name                            = 2;
+    string description                     = 3;
+    bool is_done                           = 4;
+    User creator                           = 5;
+    repeated Tag tags                      = 6;
+    google.protobuf.Timestamp created_time = 7;
+    google.protobuf.Timestamp doned_time   = 8;
+}
+
+message User {
+    int32 id = 1;
+    string name = 2;
+    string username = 3;
+}
+
+message Tag {
+    int32 id = 1;
+    string value = 2;
+    string description = 3;
 }
 
 enum Filter {
