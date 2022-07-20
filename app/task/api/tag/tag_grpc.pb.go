@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.21.2
-// source: app/tag/api/tag.proto
+// source: app/task/api/tag/tag.proto
 
-package api
+package api_tag
 
 import (
 	context "context"
@@ -246,5 +246,5 @@ var TagHandler_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/tag/api/tag.proto",
+	Metadata: "app/task/api/tag/tag.proto",
 }

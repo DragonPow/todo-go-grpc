@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"todo-go-grpc/app/dbservice"
-	"todo-go-grpc/app/tag/domain"
-	"todo-go-grpc/app/tag/repository"
+	"todo-go-grpc/app/task/domain"
+	"todo-go-grpc/app/task/repository"
 
 	"github.com/jackc/pgconn"
 	"gorm.io/gorm"

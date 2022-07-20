@@ -5,10 +5,8 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-
-	domainTag "todo-go-grpc/app/tag/domain"
-	domainTask "todo-go-grpc/app/task/domain"
-	domainUser "todo-go-grpc/app/user/domain"
+	// taskDomain "todo-go-grpc/app/task/domain"
+	// userDomain "todo-go-grpc/app/user/domain"
 )
 
 type Database struct {
@@ -36,7 +34,7 @@ func Init() *Database {
 		log.Fatalln(err)
 	}
 
-	db.AutoMigrate(&domainTask.Task{}, &domainTag.Tag{}, &domainUser.User{})
+	// db.AutoMigrate(&taskDomain.Task{}, &taskDomain.Tag{}, &userDomain.User{})
 
 	return &Database{Db: db}
 }

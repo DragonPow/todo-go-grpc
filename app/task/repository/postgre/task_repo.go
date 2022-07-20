@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"todo-go-grpc/app/dbservice"
-	tagDomain "todo-go-grpc/app/tag/domain"
 	"todo-go-grpc/app/task/domain"
 	"todo-go-grpc/app/task/repository"
 
@@ -32,7 +31,7 @@ func SearchUserByIds(ctx context.Context, ids []int32, db *gorm.DB) (tasks []dom
 func (t *taskRepository) Fetch(ctx context.Context, user_id int32, offset int32, number int32, conditions map[string]any) ([]domain.Task, error) {
 	var tasks []domain.Task
 	var queryString string
-	tx := t.Conn.Db.Preload("UserCreator").Preload("Tags")
+	tx := t.Conn.Db.Preload("Tags")
 	queryArgs := []interface{}{}
 
 	// Check condition and add to queryString
@@ -75,7 +74,7 @@ func (t *taskRepository) Fetch(ctx context.Context, user_id int32, offset int32,
 
 func (t *taskRepository) GetByID(ctx context.Context, id int32) (*domain.Task, error) {
 	var task domain.Task
-	if err := t.Conn.Db.Preload("UserCreator").Preload("Tags").First(&task, id).Error; err != nil {
+	if err := t.Conn.Db.Preload("Tags").First(&task, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrTaskNotExists
 		}
@@ -122,9 +121,9 @@ func (t *taskRepository) Update(ctx context.Context, id int32, new_info *domain.
 	}
 
 	// Update tags
-	tranferIdToTag := func(ids []int32) (tags []tagDomain.Tag) {
+	tranferIdToTag := func(ids []int32) (tags []domain.Tag) {
 		for _, id := range ids {
-			tags = append(tags, tagDomain.Tag{ID: id})
+			tags = append(tags, domain.Tag{ID: id})
 		}
 		return tags
 	}
@@ -136,7 +135,6 @@ func (t *taskRepository) Update(ctx context.Context, id int32, new_info *domain.
 		return nil, err
 	}
 
-	// TODO: implement new_info here
 	return new_info, nil
 }
 
@@ -146,8 +144,12 @@ func (t *taskRepository) Delete(ctx context.Context, ids []int32) error {
 	}
 
 	// Delete tasks
-	// Add Select("Tags") to delete association of task and tag
-	if err := t.Conn.Db.Select("Tags").Delete(&domain.Task{}, ids).Error; err != nil {
+	// Add Select(clause.Associations) to delete association of task and tag
+	tasks := []domain.Task{}
+	for _, id := range ids {
+		tasks = append(tasks, domain.Task{ID: id})
+	}
+	if err := t.Conn.Db.Select("Tags").Delete(tasks).Error; err != nil {
 		return err
 	}
 

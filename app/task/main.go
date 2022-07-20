@@ -8,7 +8,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	service "todo-go-grpc/app/task/internal"
+	tagService "todo-go-grpc/app/task/internal/tag"
+	taskService "todo-go-grpc/app/task/internal/task"
 	repo "todo-go-grpc/app/task/repository/postgre"
 )
 
@@ -28,7 +29,10 @@ func main() {
 	db := dbservice.Init()
 
 	taskRepository := repo.NewTaskRepository(*db)
-	service.RegisterGrpc(server, taskRepository)
+	tagRepository := repo.NewTagRepository(*db)
+
+	taskService.RegisterGrpc(server, taskRepository)
+	tagService.RegisterGrpc(server, tagRepository)
 
 	log.Printf("Task service start on port %v", port)
 	if err := server.Serve(listener); err != nil {

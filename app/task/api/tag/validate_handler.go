@@ -1,4 +1,4 @@
-package api
+package api_tag
 
 import "errors"
 

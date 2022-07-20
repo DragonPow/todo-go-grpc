@@ -14,3 +14,12 @@ type TaskRepository interface {
 	Update(ctx context.Context, id int32, new_info *domain.Task, tags_add []int32, tags_remove []int32) (*domain.Task, error)
 	Delete(ctx context.Context, ids []int32) error
 }
+
+type TagRepository interface {
+	FetchAll(ctx context.Context) ([]domain.Tag, error)
+	GetByID(ctx context.Context, id int32) (*domain.Tag, error)
+	Create(ctx context.Context, info *domain.Tag) (*domain.Tag, error)
+	Update(ctx context.Context, id int32, new_info *domain.Tag) (*domain.Tag, error)
+	Delete(ctx context.Context, id int32) error
+	DeleteAll(ctx context.Context) error
+}

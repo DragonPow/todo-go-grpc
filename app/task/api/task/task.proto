@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.task;
 
-option go_package = "../api";
+option go_package = "./api_task";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
