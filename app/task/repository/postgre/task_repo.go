@@ -172,5 +172,9 @@ func (t *taskRepository) IsExists(ctx context.Context, ids int32) (bool, error) 
 }
 
 func (t *taskRepository) GetByUserId(ctx context.Context, user_id int32) ([]int32, error) {
-	return nil, errors.New("Implemented needed")
+	tasks_id := []int32{}
+	if err := t.Conn.Db.Model(&domain.Task{}).Where("creator_id = ?", user_id).Select("id").Find(&tasks_id).Error; err != nil {
+		return nil, err
+	}
+	return tasks_id, nil
 }

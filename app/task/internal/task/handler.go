@@ -162,12 +162,13 @@ func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.
 	// Tranfer domain to api response
 	tasks_rs := &api.ListTask{Tasks: []*api.Task{}}
 	for _, task := range tasks_domain {
+		my_task := task
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
 			// Get user info
-			apiUser, _ := serverInstance.GetUserInfo(ctx, task.CreatorId)
+			apiUser, _ := serverInstance.GetUserInfo(ctx, my_task.CreatorId)
 			// TODO: handler error here
 			// if err != nil {
 			// 	if errors.Is(err, domain.ErrUserNotExists) {
@@ -175,9 +176,8 @@ func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.
 			// 	}
 			// 	panic(grpc_status.Error(codes.Unknown, err.Error()))
 			// }
-			log.Printf("Get user info success, id: %v", apiUser.Id)
 
-			tasks_rs.Tasks = append(tasks_rs.Tasks, transferDomainToTask(&task, apiUser))
+			tasks_rs.Tasks = append(tasks_rs.Tasks, transferDomainToTask(&my_task, apiUser))
 		}()
 	}
 	wg.Wait()
@@ -270,10 +270,14 @@ func (serverInstance *server) DeleteMultiple(ctx context.Context, req *api.Delet
 
 func (serverInstance *server) DeleteAll(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	// TODO: Get creator id
-	// var creator_id int32 = 1
+	var creator_id int32 = 1
 
-	err := serverInstance.repo.Delete(ctx, []int32{})
+	tasks_id, err := serverInstance.repo.GetByUserId(ctx, creator_id)
+	if err != nil {
+		return nil, grpc_status.Error(codes.Unknown, err.Error())
+	}
 
+	err = serverInstance.repo.Delete(ctx, tasks_id)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotExists) {
 			return nil, grpc_status.Error(codes.NotFound, err.Error())
