@@ -19,13 +19,15 @@ import (
 )
 
 type server struct {
-	repo repository.TaskRepository
+	taskRepo repository.TaskRepository
+	tagRepo  repository.TagRepository
 	api.UnimplementedTaskHandlerServer
 }
 
-func RegisterGrpc(gserver *grpc.Server, repo repository.TaskRepository) {
+func RegisterGrpc(gserver *grpc.Server, taskRepo repository.TaskRepository, tagRepo repository.TagRepository) {
 	taskServer := &server{
-		repo: repo,
+		taskRepo: taskRepo,
+		tagRepo:  tagRepo,
 	}
 
 	api.RegisterTaskHandlerServer(gserver, taskServer)
@@ -150,7 +152,7 @@ func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.
 		conditions_map["filter"] = req.Filter.String()
 	}
 
-	tasks_domain, err := serverInstance.repo.Fetch(ctx, creator_id, req.PageToken, req.PageSize, conditions_map)
+	tasks_domain, err := serverInstance.taskRepo.Fetch(ctx, creator_id, req.PageToken, req.PageSize, conditions_map)
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTaskNotExists) {
@@ -187,7 +189,7 @@ func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.
 
 func (serverInstance *server) Get(ctx context.Context, req *api.GetReq) (*api.Task, error) {
 	// Get task
-	task, err := serverInstance.repo.GetByID(ctx, req.Id)
+	task, err := serverInstance.taskRepo.GetByID(ctx, req.Id)
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTaskNotExists) {
@@ -225,7 +227,7 @@ func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*
 		data.Tags = append(data.Tags, domain.Tag{ID: task_id})
 	}
 
-	new_task, err := serverInstance.repo.Create(ctx, creator_id, data)
+	new_task, err := serverInstance.taskRepo.Create(ctx, creator_id, data)
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTagNotExists) {
@@ -240,7 +242,41 @@ func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*
 func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*api.BasicTask, error) {
 	data := transferBasicTaskToDomain(req.NewTaskInfo)
 
-	new_task, err := serverInstance.repo.Update(ctx, req.Id, data, req.TagsAdded, req.TagsDeleted)
+	// Check tag add and remove is in tags
+	all_tag, err := serverInstance.tagRepo.FetchAll(ctx)
+	if err != nil {
+		return nil, grpc_status.Error(codes.Unknown, err.Error())
+	}
+
+	// Check add_tag in tags
+	for _, add_tag := range req.TagsAdded {
+		isFind := false
+		for _, tag := range all_tag {
+			if add_tag == tag.ID {
+				isFind = true
+				break
+			}
+		}
+		if !isFind {
+			return nil, grpc_status.Error(codes.NotFound, domain.ErrTagNotExists.Error())
+		}
+	}
+
+	// Check delete_tag in tags
+	for _, delete_tag := range req.TagsDeleted {
+		isFind := false
+		for _, tag := range all_tag {
+			if delete_tag == tag.ID {
+				isFind = true
+				break
+			}
+		}
+		if !isFind {
+			return nil, grpc_status.Error(codes.NotFound, domain.ErrTagNotExists.Error())
+		}
+	}
+
+	new_task, err := serverInstance.taskRepo.Update(ctx, req.Id, data, req.TagsAdded, req.TagsDeleted)
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTagNotExists) {
@@ -256,9 +292,7 @@ func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*
 }
 
 func (serverInstance *server) DeleteMultiple(ctx context.Context, req *api.DeleteMultipleReq) (*emptypb.Empty, error) {
-	err := serverInstance.repo.Delete(ctx, req.TasksId)
-
-	if err != nil {
+	if err := serverInstance.taskRepo.Delete(ctx, req.TasksId); err != nil {
 		if errors.Is(err, domain.ErrTagNotExists) {
 			return nil, grpc_status.Error(codes.NotFound, err.Error())
 		}
@@ -272,12 +306,12 @@ func (serverInstance *server) DeleteAll(ctx context.Context, req *emptypb.Empty)
 	// TODO: Get creator id
 	var creator_id int32 = 1
 
-	tasks_id, err := serverInstance.repo.GetByUserId(ctx, creator_id)
+	tasks_id, err := serverInstance.taskRepo.GetByUserId(ctx, creator_id)
 	if err != nil {
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
 
-	err = serverInstance.repo.Delete(ctx, tasks_id)
+	err = serverInstance.taskRepo.Delete(ctx, tasks_id)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotExists) {
 			return nil, grpc_status.Error(codes.NotFound, err.Error())

@@ -31,7 +31,7 @@ func main() {
 	taskRepository := repo.NewTaskRepository(*db)
 	tagRepository := repo.NewTagRepository(*db)
 
-	taskService.RegisterGrpc(server, taskRepository)
+	taskService.RegisterGrpc(server, taskRepository, tagRepository)
 	tagService.RegisterGrpc(server, tagRepository)
 
 	log.Printf("Task service start on port %v", port)
