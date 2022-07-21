@@ -2,7 +2,6 @@ package postgre
 
 import (
 	"database/sql"
-	"regexp"
 	"testing"
 	"todo-go-grpc/app/dbservice"
 	"todo-go-grpc/app/task/domain"
@@ -27,7 +26,7 @@ func (s *Suite) SetupTest() {
 		err error
 	)
 
-	db, s.mock, err = sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	db, s.mock, err = sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(s.T(), err)
 
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{
@@ -48,16 +47,14 @@ func (s *Suite) Test_tagRepository_GetByID() {
 		id          int32 = 1
 		value             = ""
 		description       = ""
-		query             = `SELECT * FROM "tags" WHERE (id = $1) ORDER BY "tags"."id" LIMIT 1`
+		query             = `SELECT * FROM "tags" WHERE "tags"."id" = $1 ORDER BY "tags"."id" LIMIT 1`
 		rows              = sqlmock.NewRows([]string{"id", "value", "description"}).AddRow(id, value, description)
 	)
 
-	s.mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(id).WillReturnRows(rows)
+	s.mock.ExpectQuery(query).WithArgs(id).WillReturnRows(rows)
 
 	res, err := s.repo.GetByID(nil, id)
 	require.NoError(s.T(), err)
 
-	s.NotEqual(res, &domain.Tag{ID: id, Value: value, Description: description})
 	s.Equal(res, &domain.Tag{ID: id, Value: value, Description: description})
-	s.True(false)
 }
