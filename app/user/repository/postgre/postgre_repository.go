@@ -7,6 +7,7 @@ import (
 	"todo-go-grpc/app/user/domain"
 	"todo-go-grpc/app/user/repository"
 
+	"github.com/jackc/pgconn"
 	"gorm.io/gorm"
 )
 
@@ -59,7 +60,17 @@ func (u *userRepository) GetByUsername(ctx context.Context, username string) (*d
 }
 
 func (u *userRepository) Create(ctx context.Context, info *domain.User) (*domain.User, error) {
-	if err := u.Conn.Db.Create(&info).Error; err != nil {
+	info_map := map[string]interface{}{
+		"name":     info.Name,
+		"username": info.Username,
+		"password": info.Password,
+	}
+	if err := u.Conn.Db.Debug().Model(&domain.User{}).Create(info_map).Error; err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok {
+			if pgErr.Code == "23505" {
+				return nil, domain.ErrUserNameIsExists
+			}
+		}
 		return nil, err
 	}
 
@@ -73,7 +84,12 @@ func (u *userRepository) Update(ctx context.Context, id int32, new_info *domain.
 		"password": new_info.Password,
 	}
 
-	if err := u.Conn.Db.First(&new_info, id).Updates(&update).Error; err != nil {
+	if err := u.Conn.Db.Model(&domain.User{ID: id}).Updates(&update).Error; err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok {
+			if pgErr.Code == "23505" {
+				return nil, domain.ErrUserNameIsExists
+			}
+		}
 		return nil, err
 	}
 

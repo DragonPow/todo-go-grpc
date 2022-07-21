@@ -2,256 +2,157 @@ package postgre
 
 import (
 	"context"
-	"reflect"
-	"testing"
-	"todo-go-grpc/app/dbservice"
-	"todo-go-grpc/app/task/domain"
-	"todo-go-grpc/app/task/repository"
 
-	"gorm.io/gorm"
+	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func TestNewTaskRepository(t *testing.T) {
-	type args struct {
-		conn dbservice.Database
+func (s *Suite) Test_taskRepository_GetByID() {
+	var (
+		query = `SELECT \* FROM "tasks"`
+	)
+
+	testcases := []testcase_task{
+		{
+			// success
+			data: mockDataTask[0],
+			exportRow: sqlmock.NewRows([]string{"id", "name", "description", "id_done", "created_at", "done_at"}).
+				AddRow(mockDataTask[0].ID, mockDataTask[0].Name, mockDataTask[0].Description, mockDataTask[0].IsDone, mockDataTask[0].CreatedAt, mockDataTask[0].DoneAt),
+			exportError: nil,
+			want:        mockDataTask[0],
+			wantErr:     nil,
+		},
+		// {
+		// 	// fail because id not exists
+		// 	data:        mockDataTask[0],
+		// 	exportError: gorm.ErrRecordNotFound,
+		// 	want:        nil,
+		// 	wantErr:     domain.ErrtaskNotExists,
+		// },
 	}
-	tests := []struct {
-		name string
-		args args
-		want repository.TaskRepository
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewTaskRepository(tt.args.conn); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewTaskRepository() = %v, want %v", got, tt.want)
-			}
-		})
+
+	for _, testcase := range testcases {
+		s.GetQuery(Query, query, testcase, testcase.data.ID)
+		res, err := s.taskRepo.GetByID(context.Background(), testcase.data.ID)
+		if testcase.want != nil {
+			s.Nil(err)
+			s.Equal(testcase.want, *res)
+		} else {
+			s.ErrorIs(err, testcase.wantErr)
+
+		}
 	}
 }
 
-func TestSearchUserByIds(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		ids []int32
-		db  *gorm.DB
+func (s *Suite) Test_taskRepository_Create() {
+	var (
+		query            = `INSERT INTO "tasks"`
+		creator_id int32 = 1
+	)
+
+	testcases := []testcase_task{
+		{
+			// success
+			data:        mockDataTask[0],
+			arg:         creator_id,
+			exportRow:   sqlmock.NewRows([]string{}),
+			exportError: nil,
+			want:        mockDataTask[0],
+			wantErr:     nil,
+		},
+		// {
+		// 	// fail because duplicate taskname
+		// 	data:        mockDataTask[1],
+		// 	exportError: &pgconn.PgError{Code: "23505"},
+		// 	want:        nil,
+		// 	wantErr:     domain.ErrtaskNameIsExists,
+		// },
 	}
-	tests := []struct {
-		name      string
-		args      args
-		wantTasks []domain.Task
-		wantErr   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotTasks, err := SearchUserByIds(tt.args.ctx, tt.args.ids, tt.args.db)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SearchUserByIds() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotTasks, tt.wantTasks) {
-				t.Errorf("SearchUserByIds() = %v, want %v", gotTasks, tt.wantTasks)
-			}
-		})
+
+	for _, testcase := range testcases {
+		s.GetQuery(TransactionQuery, query, testcase)
+		res, err := s.taskRepo.Create(context.Background(), testcase.arg.(int32), &testcase.data)
+		if testcase.want != nil {
+			s.Nil(err)
+			s.Equal(testcase.want, *res)
+		} else {
+			s.ErrorIs(err, testcase.wantErr)
+
+		}
 	}
 }
 
-func Test_taskRepository_Fetch(t *testing.T) {
-	type args struct {
-		ctx        context.Context
-		user_id    int32
-		offset     int32
-		number     int32
-		conditions map[string]any
+func (s *Suite) Test_taskRepository_Update() {
+	var (
+		query = `UPDATE "tasks"`
+	)
+
+	testcases := []testcase_task{
+		{
+			// success
+			data: mockDataTask[0],
+			arg: [2][]int32{
+				[]int32{mockDataTag[0].ID, mockDataTag[1].ID}, // added tag
+				[]int32{mockDataTag[2].ID},                    // remove tag
+			},
+			exportResult: sqlmock.NewResult(0, 1),
+			exportError:  nil,
+			want:         mockDataTask[0],
+			wantErr:      nil,
+		},
+		// {
+		// 	// fail because duplicate taskname
+		// 	data:        mockDataTask[1],
+		// 	exportError: &pgconn.PgError{Code: "23505"},
+		// 	want:        nil,
+		// 	wantErr:     domain.ErrtaskNameIsExists,
+		// },
 	}
-	tests := []struct {
-		name    string
-		tr      *taskRepository
-		args    args
-		want    []domain.Task
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.tr.Fetch(tt.args.ctx, tt.args.user_id, tt.args.offset, tt.args.number, tt.args.conditions)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("taskRepository.Fetch() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("taskRepository.Fetch() = %v, want %v", got, tt.want)
-			}
-		})
+
+	for _, testcase := range testcases {
+		s.GetQuery(TransactionExecute, query, testcase, testcase.data.Name, testcase.data.ID)
+		res, err := s.taskRepo.Update(
+			context.Background(),
+			testcase.data.ID,
+			&testcase.data,
+			testcase.arg.([]interface{})[0].([]int32),
+			testcase.arg.([]interface{})[1].([]int32),
+		)
+		if testcase.want != nil {
+			s.Nil(err)
+			s.Equal(testcase.want, *res)
+		} else {
+			s.ErrorIs(err, testcase.wantErr)
+
+		}
 	}
 }
 
-func Test_taskRepository_GetByID(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		id  int32
-	}
-	tests := []struct {
-		name    string
-		tr      *taskRepository
-		args    args
-		want    *domain.Task
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.tr.GetByID(tt.args.ctx, tt.args.id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("taskRepository.GetByID() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("taskRepository.GetByID() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+func (s *Suite) Test_taskRepository_Delete() {
+	var (
+		query = `DELETE FROM "tasks"`
+	)
 
-func Test_taskRepository_Create(t *testing.T) {
-	type args struct {
-		ctx        context.Context
-		creator_id int32
-		info       *domain.Task
+	testcases := []testcase_task{
+		{
+			// success
+			// data:         mockDataTask[0],
+			arg:          []int32{mockDataTask[0].ID, mockDataTask[1].ID},
+			exportResult: sqlmock.NewResult(0, 1),
+			exportError:  nil,
+			wantErr:      nil,
+		},
+		{
+			// success with no row
+			// data:         mockDataTask[1],
+			exportResult: sqlmock.NewResult(0, 0),
+			exportError:  nil,
+			wantErr:      nil,
+		},
 	}
-	tests := []struct {
-		name    string
-		tr      *taskRepository
-		args    args
-		want    *domain.Task
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.tr.Create(tt.args.ctx, tt.args.creator_id, tt.args.info)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("taskRepository.Create() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("taskRepository.Create() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
-func Test_taskRepository_Update(t *testing.T) {
-	type args struct {
-		ctx         context.Context
-		id          int32
-		new_info    *domain.Task
-		tags_add    []int32
-		tags_remove []int32
-	}
-	tests := []struct {
-		name    string
-		tr      *taskRepository
-		args    args
-		want    *domain.Task
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.tr.Update(tt.args.ctx, tt.args.id, tt.args.new_info, tt.args.tags_add, tt.args.tags_remove)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("taskRepository.Update() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("taskRepository.Update() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_taskRepository_Delete(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		ids []int32
-	}
-	tests := []struct {
-		name    string
-		tr      *taskRepository
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.tr.Delete(tt.args.ctx, tt.args.ids); (err != nil) != tt.wantErr {
-				t.Errorf("taskRepository.Delete() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_taskRepository_IsExists(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		ids int32
-	}
-	tests := []struct {
-		name    string
-		tr      *taskRepository
-		args    args
-		want    bool
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.tr.IsExists(tt.args.ctx, tt.args.ids)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("taskRepository.IsExists() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("taskRepository.IsExists() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_taskRepository_GetByUserId(t *testing.T) {
-	type args struct {
-		ctx     context.Context
-		user_id int32
-	}
-	tests := []struct {
-		name    string
-		tr      *taskRepository
-		args    args
-		want    []int32
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.tr.GetByUserId(tt.args.ctx, tt.args.user_id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("taskRepository.GetByUserId() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("taskRepository.GetByUserId() = %v, want %v", got, tt.want)
-			}
-		})
+	for _, testcase := range testcases {
+		s.GetQuery(TransactionExecute, query, testcase, testcase.arg.([]int32))
+		err := s.taskRepo.Delete(context.Background(), testcase.arg.([]int32))
+		s.ErrorIs(err, testcase.wantErr)
 	}
 }

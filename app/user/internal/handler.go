@@ -57,7 +57,7 @@ func (serverInstance *server) Login(ctx context.Context, req *api.LoginReq) (*ap
 
 	if err != nil {
 		log.Println(err.Error())
-		if errors.Is(err, domain.ErrUsernameOrPasswordWrong) {
+		if errors.Is(err, domain.ErrUserNotExists) {
 			return nil, response_service.ResponseErrorNotFound(err)
 		}
 		return nil, response_service.ResponseErrorUnknown(err)
