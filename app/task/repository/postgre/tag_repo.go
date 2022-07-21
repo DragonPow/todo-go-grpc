@@ -3,7 +3,6 @@ package postgre
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"todo-go-grpc/app/dbservice"
 	"todo-go-grpc/app/task/domain"
@@ -63,7 +62,7 @@ func (t *tagRepository) Update(ctx context.Context, id int32, new_info *domain.T
 	new_info_map["value"] = new_info.Value
 	new_info_map["description"] = new_info.Description
 
-	if err := t.Conn.Db.First(&new_info, id).Updates(new_info_map).Error; err != nil {
+	if err := t.Conn.Db.Debug().Model(&domain.Tag{ID: id}).Updates(new_info_map).Error; err != nil {
 		if pgError, ok := err.(*pgconn.PgError); ok && errors.Is(err, pgError) {
 			// Value of tag is duplicate
 			if pgError.Code == "23505" {
@@ -78,7 +77,7 @@ func (t *tagRepository) Update(ctx context.Context, id int32, new_info *domain.T
 
 func (t *tagRepository) Delete(ctx context.Context, id int32) error {
 	tag := domain.Tag{ID: id}
-	if err := t.Conn.Db.Delete(&tag).Error; err != nil {
+	if err := t.Conn.Db.Debug().Delete(&tag).Error; err != nil {
 		if pgError, ok := err.(*pgconn.PgError); ok && errors.Is(err, pgError) {
 			// Tag still another reference
 			if pgError.Code == "23503" {
@@ -92,5 +91,15 @@ func (t *tagRepository) Delete(ctx context.Context, id int32) error {
 }
 
 func (t *tagRepository) DeleteAll(ctx context.Context) error {
-	return fmt.Errorf("Implemented needed")
+	if err := t.Conn.Db.Debug().Where("1 = 1").Delete(&domain.Tag{}).Error; err != nil {
+		if pgError, ok := err.(*pgconn.PgError); ok && errors.Is(err, pgError) {
+			// Tag still another reference
+			if pgError.Code == "23503" {
+				return domain.ErrTagStillReference
+			}
+		}
+		return err
+	}
+
+	return nil
 }
