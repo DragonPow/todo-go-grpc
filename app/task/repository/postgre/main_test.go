@@ -76,6 +76,7 @@ var (
 			IsDone:      false,
 			Description: "Description 1",
 			CreatedAt:   time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC),
+			CreatorId:   1,
 		},
 		{
 			ID:          2,
@@ -83,6 +84,7 @@ var (
 			IsDone:      false,
 			Description: "Description 2",
 			CreatedAt:   time.Date(2022, 1, 2, 0, 0, 0, 0, time.UTC),
+			CreatorId:   2,
 		},
 		{
 			ID:          3,
@@ -91,6 +93,7 @@ var (
 			Description: "Description 3",
 			CreatedAt:   time.Date(2022, 1, 3, 0, 0, 0, 0, time.UTC),
 			DoneAt:      time.Date(2022, 2, 3, 10, 0, 0, 0, time.UTC),
+			CreatorId:   1,
 		},
 		{
 			ID:          4,
@@ -99,27 +102,20 @@ var (
 			Description: "Description 4",
 			CreatedAt:   time.Date(2022, 1, 4, 0, 0, 0, 0, time.UTC),
 			DoneAt:      time.Date(2022, 2, 1, 30, 0, 0, 0, time.UTC),
+			CreatorId:   2,
 		},
 	}
 )
 
 type testcase_tag struct {
-	data         domain.Tag
-	exportRow    *sqlmock.Rows
-	exportResult sql.Result
-	exportError  error
-	want         any
-	wantErr      error
+	Data domain.Tag `json:"-"`
+	TestcaseTemplate
 }
 
 type testcase_task struct {
-	data         domain.Task
-	arg          any
-	exportRow    *sqlmock.Rows
-	exportResult sql.Result
-	exportError  error
-	want         any
-	wantErr      error
+	Data domain.Task `json:"-"`
+	Arg  any         `json:"-"`
+	TestcaseTemplate
 }
 
 type StatusQuery int
@@ -131,29 +127,69 @@ const (
 )
 
 type TestcaseTemplate struct {
-	exportRow    *sqlmock.Rows
-	exportResult sql.Result
-	exportError  error
-	want         any
-	wantErr      error
+	ExportRow    *sqlmock.Rows `json:"export_row"`
+	ExportResult sql.Result    `json:"export_result"`
+	ExportError  error         `json:"export_error"`
+	Want         any           `json:"-`
+	WantErr      error         `json:"-"`
 }
 
-func (s *Suite) GetQuery(status StatusQuery, query string, testcase any, args ...driver.Value) {
-	testcaseImp := testcase.(TestcaseTemplate)
+func (s *Suite) BeginQuery() {
+	s.mock.ExpectBegin()
+}
+
+func (s *Suite) EndQuery(testcase TestcaseTemplate) {
+	if testcase.ExportError == nil {
+		s.mock.ExpectCommit()
+	} else {
+		s.mock.ExpectRollback()
+	}
+}
+
+func (s *Suite) GetQueryWithoutCommit(status StatusQuery, query string, testcase TestcaseTemplate, args ...driver.Value) {
 	expecQuery := func() {
 		mockQuery := s.mock.ExpectQuery(query).WithArgs(args...)
-		if testcaseImp.exportRow != nil {
-			mockQuery.WillReturnRows(testcaseImp.exportRow)
+		if testcase.ExportRow != nil {
+			mockQuery.WillReturnRows(testcase.ExportRow)
 		} else {
-			mockQuery.WillReturnError(testcaseImp.exportError)
+			mockQuery.WillReturnError(testcase.ExportError)
 		}
 	}
 	expectExec := func() {
 		mockQuery := s.mock.ExpectExec(query).WithArgs(args...)
-		if testcaseImp.exportResult != nil {
-			mockQuery.WillReturnResult(testcaseImp.exportResult)
+		if testcase.ExportResult != nil {
+			mockQuery.WillReturnResult(testcase.ExportResult)
 		} else {
-			mockQuery.WillReturnError(testcaseImp.exportError)
+			mockQuery.WillReturnError(testcase.ExportError)
+		}
+	}
+
+	if status == Query {
+		expecQuery()
+	} else {
+		if status == TransactionQuery {
+			expecQuery()
+		} else {
+			expectExec()
+		}
+	}
+}
+
+func (s *Suite) GetQuery(status StatusQuery, query string, testcase TestcaseTemplate, args ...driver.Value) {
+	expecQuery := func() {
+		mockQuery := s.mock.ExpectQuery(query).WithArgs(args...)
+		if testcase.ExportRow != nil {
+			mockQuery.WillReturnRows(testcase.ExportRow)
+		} else {
+			mockQuery.WillReturnError(testcase.ExportError)
+		}
+	}
+	expectExec := func() {
+		mockQuery := s.mock.ExpectExec(query).WithArgs(args...)
+		if testcase.ExportResult != nil {
+			mockQuery.WillReturnResult(testcase.ExportResult)
+		} else {
+			mockQuery.WillReturnError(testcase.ExportError)
 		}
 	}
 
@@ -168,7 +204,7 @@ func (s *Suite) GetQuery(status StatusQuery, query string, testcase any, args ..
 			expectExec()
 		}
 
-		if testcaseImp.exportError == nil {
+		if testcase.ExportError == nil {
 			s.mock.ExpectCommit()
 		} else {
 			s.mock.ExpectRollback()

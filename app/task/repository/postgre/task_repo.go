@@ -3,6 +3,7 @@ package postgre
 import (
 	"context"
 	"errors"
+	"time"
 	"todo-go-grpc/app/dbservice"
 	"todo-go-grpc/app/task/domain"
 	"todo-go-grpc/app/task/repository"
@@ -87,7 +88,19 @@ func (t *taskRepository) GetByID(ctx context.Context, id int32) (*domain.Task, e
 
 func (t *taskRepository) Create(ctx context.Context, creator_id int32, info *domain.Task) (*domain.Task, error) {
 	info.CreatorId = creator_id
-	if err := t.Conn.Db.Create(&info).Error; err != nil {
+	info_map := map[string]interface{}{
+		"name":        info.Name,
+		"description": info.Description,
+		"is_done":     info.IsDone,
+		"creator_id":  creator_id,
+	}
+	if info.IsDone {
+		info_map["done_at"] = time.Now().UTC()
+	} else {
+		info_map["done_at"] = time.Time{}
+	}
+
+	if err := t.Conn.Db.Debug().Model(&domain.Task{}).Create(&info_map).Error; err != nil {
 		if pgError, ok := err.(*pgconn.PgError); ok && errors.Is(err, pgError) {
 			if pgError.Code == "23503" {
 				return nil, domain.ErrTagNotExists
@@ -97,7 +110,7 @@ func (t *taskRepository) Create(ctx context.Context, creator_id int32, info *dom
 	}
 
 	// Add tags to task
-	if err := t.Conn.Db.Model(&info).Association("Tags").Append(&info.Tags); err != nil {
+	if err := t.Conn.Db.Debug().Model(&info).Association("Tags").Append(&info.Tags); err != nil {
 		return nil, err
 	}
 
