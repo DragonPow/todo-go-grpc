@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 
+	response_service "todo-go-grpc/app/response_handler"
 	api "todo-go-grpc/app/task/api/task"
 	domain "todo-go-grpc/app/task/domain"
 	repository "todo-go-grpc/app/task/repository"
@@ -22,25 +23,27 @@ type server struct {
 	taskRepo repository.TaskRepository
 	tagRepo  repository.TagRepository
 	api.UnimplementedTaskHandlerServer
+	userService user_service.UserHandlerClient
 }
 
-func RegisterGrpc(gserver *grpc.Server, taskRepo repository.TaskRepository, tagRepo repository.TagRepository) {
+func RegisterGrpc(gserver *grpc.Server, taskRepo repository.TaskRepository, tagRepo repository.TagRepository, userService user_service.UserHandlerClient) {
 	taskServer := &server{
-		taskRepo: taskRepo,
-		tagRepo:  tagRepo,
+		taskRepo:    taskRepo,
+		tagRepo:     tagRepo,
+		userService: userService,
 	}
 
 	api.RegisterTaskHandlerServer(gserver, taskServer)
 }
 
-func getUserService() (user_service.UserHandlerClient, error) {
-	address := "localhost:8081"
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	return user_service.NewUserHandlerClient(conn), nil
-}
+// func getUserService() (user_service.UserHandlerClient, error) {
+// 	address := "localhost:8081"
+// 	conn, err := grpc.Dial(address, grpc.WithInsecure())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return user_service.NewUserHandlerClient(conn), nil
+// }
 
 func transferDomainToTag(in *domain.Tag) *api.Tag {
 	return &api.Tag{
@@ -92,7 +95,7 @@ func transferTaskToDomain(in *api.Task) *domain.Task {
 }
 
 func transferDomainToBasicTask(in *domain.Task) *api.BasicTask {
-	return &api.BasicTask{
+	rs := &api.BasicTask{
 		Id:          in.ID,
 		Name:        in.Name,
 		Description: in.Description,
@@ -101,6 +104,11 @@ func transferDomainToBasicTask(in *domain.Task) *api.BasicTask {
 		CreatorId:   in.CreatorId,
 		CreatedTime: timestamppb.New(in.CreatedAt),
 	}
+	rs.TagsId = []int32{}
+	for _, tag := range in.Tags {
+		rs.TagsId = append(rs.TagsId, tag.ID)
+	}
+	return rs
 }
 
 func transferBasicTaskToDomain(in *api.BasicTask) *domain.Task {
@@ -116,12 +124,7 @@ func transferBasicTaskToDomain(in *api.BasicTask) *domain.Task {
 }
 
 func (serverInstance *server) GetUserInfo(ctx context.Context, id int32) (*api.User, error) {
-	userService, err := getUserService()
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := userService.Get(ctx, &user_service.GetReq{Id: id})
+	user, err := serverInstance.userService.Get(ctx, &user_service.GetReq{Id: id})
 	if err != nil {
 		return nil, err
 	}
@@ -216,6 +219,14 @@ func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*
 	// TODO: Get creator id
 	var creator_id int32 = 1
 
+	// Check user not found
+	if _, err := serverInstance.GetUserInfo(ctx, creator_id); err != nil {
+		if errors.Is(err, domain.ErrUserNotExists) {
+			return nil, response_service.ResponseErrorNotFound(err)
+		}
+		return nil, response_service.ResponseErrorUnknown(err)
+	}
+
 	// Tranfer req data to domain
 	data := &domain.Task{
 		Name:        req.Name,
@@ -231,7 +242,7 @@ func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTagNotExists) {
-			return nil, grpc_status.Error(codes.InvalidArgument, err.Error())
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"todo-go-grpc/app/dbservice"
 
+	user_service "todo-go-grpc/app/user/api"
+
 	"google.golang.org/grpc"
 
 	tagService "todo-go-grpc/app/task/internal/tag"
@@ -31,7 +33,15 @@ func main() {
 	taskRepository := repo.NewTaskRepository(*db)
 	tagRepository := repo.NewTagRepository(*db)
 
-	taskService.RegisterGrpc(server, taskRepository, tagRepository)
+	// Get user service
+	address := "localhost:8081"
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Connect to user service fail\n%v", err)
+	}
+	userService := user_service.NewUserHandlerClient(conn)
+
+	taskService.RegisterGrpc(server, taskRepository, tagRepository, userService)
 	tagService.RegisterGrpc(server, tagRepository)
 
 	log.Printf("Task service start on port %v", port)

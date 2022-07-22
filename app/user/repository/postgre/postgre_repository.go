@@ -84,7 +84,7 @@ func (u *userRepository) Update(ctx context.Context, id int32, new_info *domain.
 		"password": new_info.Password,
 	}
 
-	if err := u.Conn.Db.Model(&domain.User{ID: id}).Updates(&update).Error; err != nil {
+	if err := u.Conn.Db.Model(&new_info).Updates(&update).Error; err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			if pgErr.Code == "23505" {
 				return nil, domain.ErrUserNameIsExists

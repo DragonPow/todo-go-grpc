@@ -107,7 +107,7 @@ func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrUserNameIsExists) {
-			return nil, response_service.ResponseErrorInvalidArgument(err)
+			return nil, response_service.ResponseErrorAlreadyExists(err)
 		}
 		return nil, response_service.ResponseErrorUnknown(err)
 	}
@@ -121,12 +121,20 @@ func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*
 	}
 
 	data := transferProtoToDomain(*req.NewUserInfor)
-	new_user, err := serverInstance.repo.Update(ctx, req.Id, data)
 
-	if err != nil {
-		log.Println(err.Error())
+	// Check exists
+	if _, err := serverInstance.repo.GetByID(ctx, req.Id); err != nil {
 		if errors.Is(err, domain.ErrUserNotExists) {
 			return nil, response_service.ResponseErrorNotFound(err)
+		}
+		return nil, response_service.ResponseErrorUnknown(err)
+	}
+
+	new_user, err := serverInstance.repo.Update(ctx, req.Id, data)
+	if err != nil {
+		log.Println(err.Error())
+		if errors.Is(err, domain.ErrUserNameIsExists) {
+			return nil, response_service.ResponseErrorAlreadyExists(err)
 		}
 		return nil, response_service.ResponseErrorUnknown(err)
 	}
