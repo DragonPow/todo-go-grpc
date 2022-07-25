@@ -127,9 +127,10 @@ func (t *taskRepository) Update(ctx context.Context, id int32, new_info *domain.
 	new_task_map["description"] = new_info.Description
 	new_task_map["is_done"] = new_info.IsDone
 	// new_task_map["creator_id"] = new_info.CreatorId
+	new_info.ID = id
 
 	// Update information
-	if err := t.Conn.Db.First(&new_info, id).Updates(new_task_map).Error; err != nil {
+	if err := t.Conn.Db.Model(new_info).Updates(new_task_map).Error; err != nil {
 		return nil, err
 	}
 
@@ -141,10 +142,10 @@ func (t *taskRepository) Update(ctx context.Context, id int32, new_info *domain.
 		return tags
 	}
 
-	if err := t.Conn.Db.Model(&new_info).Association("Tags").Append(tranferIdToTag(tags_add)); err != nil {
+	if err := t.Conn.Db.Model(new_info).Association("Tags").Append(tranferIdToTag(tags_add)); err != nil {
 		return nil, err
 	}
-	if err := t.Conn.Db.Model(&new_info).Association("Tags").Delete(tranferIdToTag(tags_remove)); err != nil {
+	if err := t.Conn.Db.Model(new_info).Association("Tags").Delete(tranferIdToTag(tags_remove)); err != nil {
 		return nil, err
 	}
 

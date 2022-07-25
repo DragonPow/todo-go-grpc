@@ -61,7 +61,7 @@ func transferTagToDomain(in *api.Tag) *domain.Tag {
 	}
 }
 
-func transferDomainToTask(in *domain.Task, creator *api.User) *api.Task {
+func transferDomainToTask(in *domain.Task) *api.Task {
 	apiTasks := []*api.Tag{}
 	for _, tag := range in.Tags {
 		apiTasks = append(apiTasks, transferDomainToTag(&tag))
@@ -72,7 +72,6 @@ func transferDomainToTask(in *domain.Task, creator *api.User) *api.Task {
 		Description: in.Description,
 		IsDone:      in.IsDone,
 		Tags:        apiTasks,
-		Creator:     creator,
 		DonedTime:   timestamppb.New(in.DoneAt),
 		CreatedTime: timestamppb.New(in.CreatedAt),
 	}
@@ -144,22 +143,16 @@ func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.
 	var wg sync.WaitGroup
 
 	// Map req data to search conditions
-	conditions_map := map[string]any{}
-	if req.Name != "" {
-		conditions_map["name"] = req.Name
-	}
 	// if req.TagsId != nil || len(req.TagsId) != 0 {
 	// 	conditions_map["tags"] = req.TagsId
 	// }
-	if req.Filter != api.Filter_FILTER_UNSPECIFIED {
-		conditions_map["filter"] = req.Filter.String()
-	}
+	conditions_map := GetConditions(req)
 
 	tasks_domain, err := serverInstance.taskRepo.Fetch(ctx, creator_id, req.PageToken, req.PageSize, conditions_map)
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTaskNotExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
@@ -167,27 +160,40 @@ func (serverInstance *server) List(ctx context.Context, req *api.ListReq) (*api.
 	// Tranfer domain to api response
 	tasks_rs := &api.ListTask{Tasks: []*api.Task{}}
 	for _, task := range tasks_domain {
-		my_task := task
+		apiTask := transferDomainToTask(&task)
+		creator_id := task.CreatorId
+		tasks_rs.Tasks = append(tasks_rs.Tasks, apiTask)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
 			// Get user info
-			apiUser, _ := serverInstance.GetUserInfo(ctx, my_task.CreatorId)
+			apiUser, _ := serverInstance.GetUserInfo(ctx, creator_id)
 			// TODO: handler error here
 			// if err != nil {
 			// 	if errors.Is(err, domain.ErrUserNotExists) {
-			// 		panic(grpc_status.Error(codes.NotFound, err.Error()))
+			// 		panic(response_service.ResponseErrorNotFound(err))
 			// 	}
 			// 	panic(grpc_status.Error(codes.Unknown, err.Error()))
 			// }
-
-			tasks_rs.Tasks = append(tasks_rs.Tasks, transferDomainToTask(&my_task, apiUser))
+			apiTask.Creator = apiUser
 		}()
 	}
 	wg.Wait()
 
 	return tasks_rs, nil
+}
+
+func GetConditions(req *api.ListReq) map[string]any {
+	conditions_map := map[string]any{}
+	if req.Name != "" {
+		conditions_map["name"] = req.Name
+	}
+
+	if req.Filter != api.Filter_FILTER_UNSPECIFIED {
+		conditions_map["filter"] = req.Filter.String()
+	}
+	return conditions_map
 }
 
 func (serverInstance *server) Get(ctx context.Context, req *api.GetReq) (*api.Task, error) {
@@ -196,7 +202,7 @@ func (serverInstance *server) Get(ctx context.Context, req *api.GetReq) (*api.Ta
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTaskNotExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
@@ -204,15 +210,18 @@ func (serverInstance *server) Get(ctx context.Context, req *api.GetReq) (*api.Ta
 	// Get user info
 	apiUser, err := serverInstance.GetUserInfo(ctx, task.CreatorId)
 	if err != nil {
-		log.Fatalf("Error getting user info: %v", err)
-		if errors.Is(err, domain.ErrUserNotExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
-		}
-		return nil, grpc_status.Error(codes.Unknown, err.Error())
+		log.Printf("Error getting user info: %v", err)
+		// if errors.Is(err, response_service.ResponseErrorNotFound(domain.ErrUserNotExists)) {
+		// 	return nil, response_service.ResponseErrorNotFound(domain.ErrUserNotExists)
+		// }
+		return nil, err
 	}
 	log.Printf("Get user info success, id: %v", apiUser.Id)
 
-	return transferDomainToTask(task, apiUser), nil
+	rs := transferDomainToTask(task)
+	rs.Creator = apiUser
+
+	return rs, nil
 }
 
 func (serverInstance *server) Create(ctx context.Context, req *api.CreateReq) (*api.BasicTask, error) {
@@ -269,7 +278,7 @@ func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*
 			}
 		}
 		if !isFind {
-			return nil, grpc_status.Error(codes.NotFound, domain.ErrTagNotExists.Error())
+			return nil, response_service.ResponseErrorNotFound(domain.ErrTagNotExists)
 		}
 	}
 
@@ -283,18 +292,18 @@ func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*
 			}
 		}
 		if !isFind {
-			return nil, grpc_status.Error(codes.NotFound, domain.ErrTagNotExists.Error())
+			return nil, response_service.ResponseErrorNotFound(domain.ErrTagNotExists)
 		}
 	}
 
 	new_task, err := serverInstance.taskRepo.Update(ctx, req.Id, data, req.TagsAdded, req.TagsDeleted)
 	if err != nil {
 		log.Println(err.Error())
-		if errors.Is(err, domain.ErrTagNotExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
+		if errors.Is(err, domain.ErrTaskNotExists) {
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
 		if errors.Is(err, domain.ErrTaskExists) {
-			return nil, grpc_status.Error(codes.AlreadyExists, err.Error())
+			return nil, response_service.ResponseErrorAlreadyExists(err)
 		}
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
@@ -305,7 +314,7 @@ func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*
 func (serverInstance *server) DeleteMultiple(ctx context.Context, req *api.DeleteMultipleReq) (*emptypb.Empty, error) {
 	if err := serverInstance.taskRepo.Delete(ctx, req.TasksId); err != nil {
 		if errors.Is(err, domain.ErrTagNotExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}
@@ -325,7 +334,7 @@ func (serverInstance *server) DeleteAll(ctx context.Context, req *emptypb.Empty)
 	err = serverInstance.taskRepo.Delete(ctx, tasks_id)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotExists) {
-			return nil, grpc_status.Error(codes.NotFound, err.Error())
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
 		return nil, grpc_status.Error(codes.Unknown, err.Error())
 	}

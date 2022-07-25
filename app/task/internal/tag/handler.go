@@ -36,7 +36,7 @@ func transferDomainToProto(in domain.Tag) *api.Tag {
 	}
 }
 
-func transferProtoToDomain(in api.Tag) *domain.Tag {
+func transferProtoToDomain(in *api.Tag) *domain.Tag {
 	return &domain.Tag{
 		ID:          in.Id,
 		Description: in.Description,
@@ -109,13 +109,16 @@ func (serverInstance *server) Update(ctx context.Context, req *api.UpdateReq) (*
 		return nil, response_service.ResponseErrorInvalidArgument(err)
 	}
 
-	data := transferProtoToDomain(*req.NewTagInfo)
+	data := transferProtoToDomain(req.NewTagInfo)
 	new_tag, err := serverInstance.repo.Update(ctx, req.Id, data)
 
 	if err != nil {
 		log.Println(err.Error())
 		if errors.Is(err, domain.ErrTagIsExists) {
 			return nil, response_service.ResponseErrorAlreadyExists(err)
+		}
+		if errors.Is(err, domain.ErrTagNotExists) {
+			return nil, response_service.ResponseErrorNotFound(err)
 		}
 		return nil, response_service.ResponseErrorUnknown(err)
 	}

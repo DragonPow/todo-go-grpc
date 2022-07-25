@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"log"
 	"testing"
 	"time"
 	"todo-go-grpc/app/response_handler"
@@ -12,27 +13,333 @@ import (
 	user_service_mock "todo-go-grpc/app/user/api/mocks"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestCreate(t *testing.T) {
-	_taskRepoMock := &mocks.TaskRepository{}
-	_tagRepoMock := &mocks.TagRepository{}
-	_userServiceMock := &user_service_mock.UserHandlerClient{}
-	_server := server{
+var (
+	time_now         = time.Now()
+	time_init        = time.Unix(0, 0).UTC()
+	_taskRepoMock    = &mocks.TaskRepository{}
+	_tagRepoMock     = &mocks.TagRepository{}
+	_userServiceMock = &user_service_mock.UserHandlerClient{}
+	_server          = server{
 		taskRepo:    _taskRepoMock,
 		tagRepo:     _tagRepoMock,
 		userService: _userServiceMock,
 	}
-	ctx := context.Background()
+	ctx = context.Background()
+)
+
+func InitMock(t *testing.T) {
+	// found user if id = 1
+	_userServiceMock.On("Get", ctx, &user_service_api.GetReq{Id: 1}).Return(
+		&user_service_api.User{
+			Id:          1,
+			Name:        "Thạch VN",
+			Username:    "vungocthach",
+			Password:    "123456",
+			CreatedTime: timestamppb.New(time_now),
+		}, nil)
+	// not found user if id = 2
+	_userServiceMock.On("Get", ctx, &user_service_api.GetReq{Id: 2}).Return(
+		nil, response_handler.ResponseErrorNotFound(domain.ErrUserNotExists),
+	)
+
+	// fetch all wil return tag id : 1-> 4
+	_tagRepoMock.On("FetchAll", ctx).Return(
+		[]domain.Tag{
+			{ID: 1, Value: "Value 1", Description: "Description 1", CreatedAt: time_now},
+			{ID: 2, Value: "Value 2", Description: "Description 2", CreatedAt: time_now},
+			{ID: 3, Value: "Value 3", Description: "Description 3", CreatedAt: time_now},
+			{ID: 4, Value: "Value 4", Description: "Description 4", CreatedAt: time_now},
+		}, nil,
+	)
+}
+
+type userApiMock struct {
+	user *user_service_api.User
+	err  error
+}
+
+func TestList(t *testing.T) {
+	InitMock(t)
+
+	type dataMock struct {
+		tasks []domain.Task
+		err   error
+	}
+
+	type testcase struct {
+		expectIn  *api.ListReq
+		expectOut *api.ListTask
+		expectErr error
+		data      *dataMock
+	}
+
+	taskApiMock := []*api.Task{
+		{
+			Id:          1,
+			Name:        "Quét nhà",
+			Description: "No description",
+			IsDone:      false,
+			Creator:     &api.User{Id: 1, Name: "Thạch VN", Username: "vungocthach"},
+			Tags: []*api.Tag{
+				{Id: 1, Value: "Value 1", Description: "Description 1"},
+				{Id: 2, Value: "Value 2", Description: "Description 2"},
+			},
+			CreatedTime: timestamppb.New(time_now.Add(-time.Hour * 5)),
+			DonedTime:   timestamppb.New(time_init),
+		},
+		{
+			Id:          2,
+			Name:        "Lau nhà",
+			Description: "No description",
+			IsDone:      true,
+			Creator:     &api.User{Id: 1, Name: "Thạch VN", Username: "vungocthach"},
+			Tags: []*api.Tag{
+				{Id: 1, Value: "Value 1", Description: "Description 1"},
+				{Id: 3, Value: "Value 3", Description: "Description 3"},
+			},
+			CreatedTime: timestamppb.New(time_now.Add(-time.Hour * 10)),
+			DonedTime:   timestamppb.New(time_now),
+		},
+		{
+			Id:          3,
+			Name:        "Lau cửa",
+			Description: "No description",
+			IsDone:      false,
+			Creator:     &api.User{Id: 1, Name: "Thạch VN", Username: "vungocthach"},
+			Tags:        []*api.Tag{},
+			CreatedTime: timestamppb.New(time_now),
+			DonedTime:   timestamppb.New(time_init),
+		},
+	}
+	taskModelMock := []domain.Task{
+
+		{
+			ID:          1,
+			Name:        "Quét nhà",
+			Description: "No description",
+			IsDone:      false,
+			CreatorId:   1,
+			Tags: []domain.Tag{
+				{ID: 1, Value: "Value 1", Description: "Description 1"},
+				{ID: 2, Value: "Value 2", Description: "Description 2"},
+			},
+			CreatedAt: time_now.Add(-time.Hour * 5),
+			DoneAt:    time_init,
+		},
+		{
+			ID:          2,
+			Name:        "Lau nhà",
+			Description: "No description",
+			IsDone:      true,
+			CreatorId:   1,
+			Tags: []domain.Tag{
+				{ID: 1, Value: "Value 1", Description: "Description 1"},
+				{ID: 3, Value: "Value 3", Description: "Description 3"},
+			},
+			CreatedAt: time_now.Add(-time.Hour * 10),
+			DoneAt:    time_now,
+		},
+		{
+			ID:          3,
+			Name:        "Lau cửa",
+			Description: "No description",
+			IsDone:      false,
+			CreatorId:   1,
+			Tags:        []domain.Tag{},
+			CreatedAt:   time_now,
+			DoneAt:      time_init,
+		},
+	}
+
+	testcases := []testcase{
+		{
+			// success: size 2 token 0, no name, no filter
+			expectIn: &api.ListReq{
+				PageSize:  2,
+				PageToken: 0,
+				Name:      "",
+				Filter:    api.Filter_FILTER_UNSPECIFIED,
+			},
+			expectOut: &api.ListTask{
+				Tasks: taskApiMock[:1],
+			},
+			data: &dataMock{
+				tasks: taskModelMock[:1],
+				err:   nil,
+			},
+		},
+		{
+			// success: size 2 token 1, no name, no filter
+			expectIn: &api.ListReq{
+				PageSize:  2,
+				PageToken: 1,
+				Name:      "",
+				Filter:    api.Filter_FILTER_UNSPECIFIED,
+			},
+			expectOut: &api.ListTask{
+				Tasks: taskApiMock[2:],
+			},
+			data: &dataMock{
+				tasks: taskModelMock[2:],
+				err:   nil,
+			},
+		},
+		{
+			// success: size 10 token 0, name: "Lau", no filter
+			expectIn: &api.ListReq{
+				PageSize:  10,
+				PageToken: 0,
+				Name:      "",
+				Filter:    api.Filter_FILTER_UNSPECIFIED,
+			},
+			expectOut: &api.ListTask{
+				Tasks: taskApiMock[1:2],
+			},
+			data: &dataMock{
+				tasks: taskModelMock[1:2],
+				err:   nil,
+			},
+		},
+		{
+			// success: size 10 token 0, no name, filter create desc
+			expectIn: &api.ListReq{
+				PageSize:  10,
+				PageToken: 0,
+				Name:      "",
+				Filter:    api.Filter_TIME_CREATE_DESC,
+			},
+			expectOut: &api.ListTask{
+				Tasks: []*api.Task{taskApiMock[2], taskApiMock[1], taskApiMock[0]},
+			},
+			data: &dataMock{
+				tasks: []domain.Task{taskModelMock[2], taskModelMock[1], taskModelMock[0]},
+				err:   nil,
+			},
+		},
+	}
+
+	for index, tc := range testcases {
+		if tc.data == nil {
+			_taskRepoMock.AssertNotCalled(t, "Fetch")
+		} else {
+			conditions := GetConditions(tc.expectIn)
+			_taskRepoMock.On("Fetch", ctx, int32(1), tc.expectIn.PageToken, tc.expectIn.PageSize, conditions).
+				Return(tc.data.tasks, tc.data.err)
+		}
+
+		actualOut, actualErr := _server.List(ctx, tc.expectIn)
+
+		log.Printf("Output assert, testcase %v: %v", index+1, assert.Equal(t, tc.expectOut, actualOut))
+		log.Printf("Error assert, testcase %v: %v", index+1, assert.ErrorIs(t, tc.expectErr, actualErr))
+	}
+	_taskRepoMock.AssertExpectations(t)
+}
+
+func TestGet(t *testing.T) {
+	InitMock(t)
 
 	type dataMock struct {
 		task *domain.Task
 		err  error
 	}
 
-	type userApiMock struct {
-		user *user_service_api.User
+	type testcase struct {
+		expectIn  *api.GetReq
+		expectOut *api.Task
+		expectErr error
+		data      *dataMock
+	}
+
+	testcases := []testcase{
+		{
+			// success
+			expectIn: &api.GetReq{Id: 1},
+			expectOut: &api.Task{
+				Id:          1,
+				Name:        "Quét nhà",
+				Description: "No description",
+				IsDone:      false,
+				Creator:     &api.User{Id: 1, Name: "Thạch VN", Username: "vungocthach"},
+				Tags: []*api.Tag{
+					{Id: 1, Value: "Value 1", Description: "Description 1"},
+					{Id: 2, Value: "Value 2", Description: "Description 2"},
+				},
+				CreatedTime: timestamppb.New(time_now),
+				DonedTime:   timestamppb.New(time_init),
+			},
+			data: &dataMock{
+				task: &domain.Task{
+					ID:          1,
+					Name:        "Quét nhà",
+					Description: "No description",
+					IsDone:      false,
+					CreatedAt:   time_now,
+					DoneAt:      time_init,
+					CreatorId:   1,
+					Tags: []domain.Tag{
+						{ID: 1, Value: "Value 1", Description: "Description 1"},
+						{ID: 2, Value: "Value 2", Description: "Description 2"},
+					},
+				},
+				err: nil,
+			},
+		},
+		{
+			// fail: task not found
+			expectIn:  &api.GetReq{Id: 2},
+			expectErr: response_handler.ResponseErrorNotFound(domain.ErrTaskNotExists),
+			data: &dataMock{
+				task: nil,
+				err:  domain.ErrTaskNotExists,
+			},
+		},
+		{
+			// fail: user not found
+			expectIn:  &api.GetReq{Id: 3},
+			expectErr: response_handler.ResponseErrorNotFound(domain.ErrUserNotExists),
+			data: &dataMock{
+				task: &domain.Task{
+					ID:          1,
+					Name:        "Vũ Ngọc Thạch",
+					Description: "No description",
+					IsDone:      false,
+					CreatedAt:   time_now,
+					DoneAt:      time_init,
+					CreatorId:   2,
+					Tags: []domain.Tag{
+						{ID: 1, Value: "Value 1", Description: "Description 1"},
+						{ID: 2, Value: "Value 2", Description: "Description 2"},
+					},
+				},
+				err: nil,
+			},
+		},
+	}
+
+	for index, tc := range testcases {
+		if tc.data == nil {
+			_taskRepoMock.AssertNotCalled(t, "GetByID")
+		} else {
+			_taskRepoMock.On("GetByID", ctx, tc.expectIn.Id).Return(tc.data.task, tc.data.err)
+		}
+
+		actualOut, actualErr := _server.Get(ctx, tc.expectIn)
+
+		log.Printf("Output assert, testcase %v: %v", index+1, assert.Equal(t, tc.expectOut, actualOut))
+		log.Printf("Error assert, testcase %v: %v", index+1, assert.ErrorIs(t, tc.expectErr, actualErr))
+	}
+	_taskRepoMock.AssertExpectations(t)
+}
+
+func TestCreate(t *testing.T) {
+	InitMock(t)
+	// define testcase
+	type dataMock struct {
+		task *domain.Task
 		err  error
 	}
 
@@ -44,8 +351,7 @@ func TestCreate(t *testing.T) {
 		userApi   *userApiMock
 	}
 
-	time_now := time.Now()
-	time_init := time.Unix(0, 0).UTC()
+	// create testcase
 	testcases := []testcase{
 		{
 			// success
@@ -111,29 +417,10 @@ func TestCreate(t *testing.T) {
 				err: nil,
 			},
 		},
-		// {
-		// 	// fail: user not exists
-		// 	expectIn: &api.CreateReq{
-		// 		Name:        "Dọn nhà 3",
-		// 		Description: "No comment",
-		// 		IsDone:      false,
-		// 		Tags:        []int32{1, 3},
-		// 	},
-		// 	expectOut: nil,
-		// 	expectErr: response_handler.ResponseErrorNotFound(domain.ErrUserNotExists),
-		// 	data: &dataMock{
-		// 		task: nil,
-		// 		err:  domain.ErrTagNotExists,
-		// 	},
-		// 	userApi: &userApiMock{
-		// 		user: nil,
-		// 		err:  domain.ErrUserNotExists,
-		// 	},
-		// },
 	}
 
+	// test
 	for _, tc := range testcases {
-		_userServiceMock.On("Get", ctx, &user_service_api.GetReq{Id: 1}).Return(tc.userApi.user, tc.userApi.err)
 		if tc.userApi.err != nil {
 			_taskRepoMock.AssertNotCalled(t, "Create")
 		} else {
@@ -163,154 +450,146 @@ func TestCreate(t *testing.T) {
 	_taskRepoMock.AssertExpectations(t)
 }
 
-// func TestUpdate(t *testing.T) {
-// 	_repoMock := &mocks.UserRepository{}
-// 	_server := server{
-// 		repo: _repoMock,
-// 	}
-// 	ctx := context.Background()
+func TestUpdate(t *testing.T) {
+	InitMock(t)
 
-// 	type dataMock struct {
-// 		user *domain.User
-// 		err  error
-// 	}
+	type dataMock struct {
+		task *domain.Task
+		err  error
+	}
 
-// 	type testcase struct {
-// 		expectIn  *api.UpdateReq
-// 		expectOut *api.User
-// 		expectErr error
-// 		data      *dataMock
-// 	}
+	type testcase struct {
+		expectIn  *api.UpdateReq
+		expectOut *api.BasicTask
+		expectErr error
+		data      *dataMock
+	}
 
-// 	created_time := time.Now()
-// 	testcases := []testcase{
-// 		{
-// 			// success
-// 			expectIn: &api.UpdateReq{
-// 				Id: 1,
-// 				NewUserInfor: &api.User{
-// 					Name:        "Vũ Ngọc Thạch",
-// 					Username:    "vungocthach",
-// 					Password:    "123456",
-// 					CreatedTime: timestamppb.New(created_time),
-// 				},
-// 			},
-// 			expectOut: &api.User{
-// 				Id:          1,
-// 				Name:        "Vũ Ngọc Thạch",
-// 				Username:    "vungocthach",
-// 				Password:    "123456",
-// 				CreatedTime: timestamppb.New(created_time),
-// 			},
-// 			expectErr: nil,
-// 			data: &dataMock{
-// 				user: &domain.User{
-// 					ID:        1,
-// 					Name:      "Vũ Ngọc Thạch",
-// 					Username:  "vungocthach",
-// 					Password:  "123456",
-// 					CreatedAt: created_time,
-// 				},
-// 				err: nil,
-// 			},
-// 		},
-// 		{
-// 			// fail: duplicate username
-// 			expectIn: &api.UpdateReq{
-// 				Id: 1,
-// 				NewUserInfor: &api.User{
-// 					Name:     "Minh Nhực",
-// 					Username: "minhnhuc",
-// 					Password: "123456",
-// 				},
-// 			},
-// 			expectOut: nil,
-// 			expectErr: response_service.ResponseErrorAlreadyExists(domain.ErrUserNameIsExists),
-// 			data: &dataMock{
-// 				user: nil,
-// 				err:  domain.ErrUserNameIsExists,
-// 			},
-// 		},
-// 		{
-// 			// fail: id not exists
-// 			expectIn: &api.UpdateReq{
-// 				Id:           2,
-// 				NewUserInfor: &api.User{},
-// 			},
-// 			expectOut: nil,
-// 			expectErr: response_service.ResponseErrorNotFound(domain.ErrUserNotExists),
-// 			data:      nil,
-// 		},
-// 	}
+	testcases := []testcase{
+		{
+			// success
+			expectIn: &api.UpdateReq{
+				Id:          1,
+				NewTaskInfo: &api.BasicTask{Name: "Vũ Ngọc Thạch", Description: "No description", IsDone: false},
+				TagsAdded:   []int32{1, 2},
+				TagsDeleted: []int32{3, 4},
+			},
+			expectOut: &api.BasicTask{
+				Id:          1,
+				Name:        "Vũ Ngọc Thạch",
+				Description: "No description",
+				IsDone:      false,
+				CreatorId:   1,
+				TagsId:      []int32{1, 2, 5},
+				CreatedTime: timestamppb.New(time_now),
+				DonedTime:   timestamppb.New(time_init),
+			},
+			data: &dataMock{
+				task: &domain.Task{
+					ID:          1,
+					Name:        "Vũ Ngọc Thạch",
+					Description: "No description",
+					IsDone:      false,
+					CreatedAt:   time_now,
+					DoneAt:      time_init,
+					CreatorId:   1,
+					Tags:        []domain.Tag{{ID: 1, Value: "1"}, {ID: 2, Value: "2"}, {ID: 5, Value: "5"}},
+				},
+				err: nil,
+			},
+		},
+		{
+			// fail: tag not found
+			expectIn: &api.UpdateReq{
+				Id:          2,
+				NewTaskInfo: &api.BasicTask{Name: "Rửa chén", Description: "No description", IsDone: false},
+				TagsAdded:   []int32{1, 6}, // fail for 6 not exists
+				TagsDeleted: nil,
+			},
+			expectErr: response_handler.ResponseErrorNotFound(domain.ErrTagNotExists),
+			data:      nil,
+		},
+		{
+			// fail: task name is exists
+			expectIn: &api.UpdateReq{
+				Id:          3,
+				NewTaskInfo: &api.BasicTask{Name: "Lau nhà", Description: "No description", IsDone: false},
+			},
+			expectErr: response_handler.ResponseErrorAlreadyExists(domain.ErrTaskExists),
+			data: &dataMock{
+				task: nil,
+				err:  domain.ErrTaskExists,
+			},
+		},
+		{
+			// fail: task not found
+			expectIn: &api.UpdateReq{
+				Id:          4,
+				NewTaskInfo: &api.BasicTask{Name: "Quét nhà", Description: "No description", IsDone: true},
+			},
+			expectErr: response_handler.ResponseErrorNotFound(domain.ErrTaskNotExists),
+			data: &dataMock{
+				task: nil,
+				err:  domain.ErrTaskNotExists,
+			},
+		},
+	}
 
-// 	// If id = 1, found user, else if = 2, not found
-// 	_repoMock.On("GetByID", ctx, mock.MatchedBy(func(id int32) bool { return id == 1 })).Return(nil, nil)
-// 	_repoMock.On("GetByID", ctx, mock.MatchedBy(func(id int32) bool { return id == 2 })).Return(nil, domain.ErrUserNotExists)
+	for _, tc := range testcases {
+		if tc.data == nil {
+			_taskRepoMock.AssertNotCalled(t, "Update")
+		} else {
+			data := transferBasicTaskToDomain(tc.expectIn.NewTaskInfo)
+			_taskRepoMock.On("Update", ctx, tc.expectIn.Id, data, tc.expectIn.TagsAdded, tc.expectIn.TagsDeleted).
+				Return(tc.data.task, tc.data.err)
+		}
 
-// 	for _, tc := range testcases {
-// 		if tc.data == nil {
-// 			_repoMock.AssertNotCalled(t, "Update")
-// 		} else {
-// 			_repoMock.On("Update", ctx, tc.expectIn.Id,
-// 				&domain.User{
-// 					// ID:        tc.expectIn.Id,
-// 					Name:      tc.expectIn.NewUserInfor.Name,
-// 					Username:  tc.expectIn.NewUserInfor.Username,
-// 					Password:  tc.expectIn.NewUserInfor.Password,
-// 					CreatedAt: tc.expectIn.NewUserInfor.CreatedTime.AsTime(),
-// 				},
-// 			).Return(tc.data.user, tc.data.err)
-// 		}
+		actualOut, actualErr := _server.Update(ctx, tc.expectIn)
 
-// 		actualOut, actualErr := _server.Update(ctx, tc.expectIn)
+		assert.Equal(t, tc.expectOut, actualOut)
+		assert.ErrorIs(t, tc.expectErr, actualErr)
+	}
+	_taskRepoMock.AssertExpectations(t)
+}
 
-// 		assert.Equal(t, tc.expectOut, actualOut)
-// 		assert.ErrorIs(t, tc.expectErr, actualErr)
-// 	}
-// 	_repoMock.AssertExpectations(t)
-// }
+func TestDeleteMultiple(t *testing.T) {
+	InitMock(t)
 
-// func TestDelete(t *testing.T) {
-// 	_repoMock := &mocks.UserRepository{}
-// 	_server := server{
-// 		repo: _repoMock,
-// 	}
-// 	ctx := context.Background()
+	type dataMock struct {
+		err error
+	}
 
-// 	type dataMock struct {
-// 		err error
-// 	}
+	type testcase struct {
+		expectIn  *api.DeleteMultipleReq
+		expectOut *emptypb.Empty
+		expectErr error
+		data      *dataMock
+	}
 
-// 	type testcase struct {
-// 		expectIn  *api.DeleteReq
-// 		expectOut *emptypb.Empty
-// 		expectErr error
-// 		data      *dataMock
-// 	}
+	testcases := []testcase{
+		{
+			// success
+			expectIn: &api.DeleteMultipleReq{
+				TasksId: []int32{1, 2},
+			},
+			expectOut: &emptypb.Empty{},
+			data: &dataMock{
+				err: nil,
+			},
+		},
+	}
 
-// 	testcases := []testcase{
-// 		{
-// 			// success
-// 			expectIn:  &api.DeleteReq{Id: 1},
-// 			expectOut: &emptypb.Empty{},
-// 			expectErr: nil,
-// 			data: &dataMock{
-// 				err: nil,
-// 			},
-// 		},
-// 	}
+	for _, tc := range testcases {
+		if tc.data == nil {
+			_taskRepoMock.AssertNotCalled(t, "Delete")
+		} else {
+			_taskRepoMock.On("Delete", ctx, tc.expectIn.TasksId).Return(tc.data.err)
+		}
 
-// 	for _, tc := range testcases {
-// 		if tc.data == nil {
-// 			_repoMock.AssertNotCalled(t, "Delete")
-// 		} else {
-// 			_repoMock.On("Delete", ctx, tc.expectIn.Id).Return(tc.data.err)
-// 		}
+		actualOut, actualErr := _server.DeleteMultiple(ctx, tc.expectIn)
 
-// 		actualOut, actualErr := _server.Delete(ctx, tc.expectIn)
-
-// 		assert.Equal(t, tc.expectOut, actualOut)
-// 		assert.ErrorIs(t, tc.expectErr, actualErr)
-// 	}
-// 	_repoMock.AssertExpectations(t)
-// }
+		assert.Equal(t, tc.expectOut, actualOut)
+		assert.ErrorIs(t, tc.expectErr, actualErr)
+	}
+	_taskRepoMock.AssertExpectations(t)
+}
